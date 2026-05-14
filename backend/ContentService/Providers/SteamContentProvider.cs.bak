@@ -1,0 +1,159 @@
+using Shared.DTO.Content;
+using System.Text.Json;
+
+namespace ContentService.Providers;
+
+public class SteamContentProvider : IExternalContentProvider
+{
+    private readonly HttpClient _httpClient;
+
+    public SteamContentProvider(HttpClient httpClient)
+    {
+        _httpClient = httpClient;
+    }
+
+    public async Task<List<ContentDto>> GetContentsAsync()
+    {
+        var games = await GetGamesAsync();
+
+        return games.Select(g => new ContentDto
+        {
+            ContentId = g.ContentId,
+            Title = g.Title,
+            Description = g.Description,
+            Genre = g.Genre,
+            ReleaseDate = g.ReleaseDate,
+            AvarageRating = g.AvarageRating,
+            ContentType = g.ContentType,
+            PosterUrl = g.PosterUrl
+        }).ToList();
+    }
+
+    // ============================
+    // 1. Отримуємо AppId зі Steam
+    // ============================
+    public async Task<List<int>> GetAppIdsAsync(int count = 0)
+    {
+        var result = new List<int>();
+
+        ulong lastAppId = 0;
+        bool hasMore = true;
+
+        while (hasMore && result.Count < count)
+        {
+            var url =
+                $"https://api.steampowered.com/IStoreService/GetAppList/v1" +
+                $"?access_token=eyAidHlwIjogIkpXVCIsICJhbGciOiAiRWREU0EiIH0.eyAiaXNzIjogInI6MDAxOF8yNzQ2QTFGRV81M0Q5RiIsICJzdWIiOiAiNzY1NjExOTgyNzg3MDQ1MzQiLCAiYXVkIjogWyAid2ViOnN0b3JlIiBdLCAiZXhwIjogMTc3MTM1NzI3MywgIm5iZiI6IDE3NjI2MzA0MTEsICJpYXQiOiAxNzcxMjcwNDExLCAianRpIjogIjAwMDdfMjdCNkNGMEZfMTUyN0IiLCAib2F0IjogMTc2MzU2OTU0NiwgInJ0X2V4cCI6IDE3ODE4NTM0MTAsICJwZXIiOiAwLCAiaXBfc3ViamVjdCI6ICIxNzguMTU4LjIzNi42IiwgImlwX2NvbmZpcm1lciI6ICIxNzguMTU4LjIzNi42IiB9.7BVOGg5AYZoZd2NtWaeGKFye8zstLIpD8Mrge7-J950DEWAbkRl1-0uJIRXiAMbEkxLmZ4JGzC7FsGLjGPIkBg" +
+                $"&last_appid={lastAppId}" +
+                $"&max_results=50000";
+
+            var response = await _httpClient.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+                break;
+
+            var json = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(json);
+
+            var responseRoot = doc.RootElement.GetProperty("response");
+
+            foreach (var app in responseRoot.GetProperty("apps").EnumerateArray())
+            {
+                result.Add(app.GetProperty("appid").GetInt32());
+
+                if (result.Count >= count)
+                    break;
+            }
+
+            hasMore = responseRoot.GetProperty("have_more_results").GetBoolean();
+            lastAppId = responseRoot.GetProperty("last_appid").GetUInt64();
+     }
+
+        return result;
+    }
+
+    // ============================
+    // 2. Отримуємо ігри по AppId
+    // ============================
+    private async Task<List<GameDto>> GetGamesAsync()
+    {
+        var appIds = await GetAppIdsAsync(0);
+
+        var tasks = appIds.Select(GetGame);
+        var results = await Task.WhenAll(tasks);
+
+        return results.Where(x => x != null).ToList()!;
+    }
+
+    // ============================
+    // 3. Отримуємо деталі гри
+    // ============================
+    private async Task<GameDto?> GetGame(int appId)
+    {
+        var url = $"https://store.steampowered.com/api/appdetails?appids={appId}";
+        var response = await _httpClient.GetAsync(url);
+
+        if (!response.IsSuccessStatusCode)
+            return null;
+
+        var json = await response.Content.ReadAsStringAsync();
+
+        using var doc = JsonDocument.Parse(json);
+
+        if (!doc.RootElement.TryGetProperty(appId.ToString(), out var root))
+            return null;
+
+        if (!root.GetProperty("success").GetBoolean())
+            return null;
+
+        var data = root.GetProperty("data");
+
+        DateTime releaseDate = DateTime.Now;
+        if (data.TryGetProperty("release_date", out var rd) &&
+            rd.TryGetProperty("date", out var dateStr))
+        {
+            DateTime.TryParse(dateStr.GetString(), out releaseDate);
+        }
+
+        return new GameDto
+        {
+            ContentId = appId,
+            Title = data.GetProperty("name").GetString(),
+            Description = data.TryGetProperty("short_description", out var desc)
+                ? desc.GetString()
+                : "",
+            Genre = data.TryGetProperty("genres", out var genres)
+                ? genres[0].GetProperty("description").GetString()
+                : "Unknown",
+            ReleaseDate = releaseDate,
+            AvarageRating = 0,
+            ContentType = "Game",
+            PosterUrl = data.GetProperty("header_image").GetString(),
+            Developer = data.TryGetProperty("developers", out var devs)
+                ? devs[0].GetString()
+                : "Unknown",
+            PEGIRating = "N/A"
+        };
+    }
+    // Публічний метод для отримання всіх ContentDto по списку AppId
+public async Task<List<ContentDto>> GetContentsByIdsAsync(List<int> appIds)
+{
+    var tasks = appIds.Select(GetGame); // GetGame вже повертає GameDto
+    var results = await Task.WhenAll(tasks);
+
+    return results
+        .Where(x => x != null)
+        .Select(g => new ContentDto
+        {
+            ContentId = g!.ContentId,
+            Title = g.Title,
+            Description = g.Description,
+            Genre = g.Genre,
+            ReleaseDate = g.ReleaseDate,
+            AvarageRating = g.AvarageRating,
+            ContentType = g.ContentType,
+            PosterUrl = g.PosterUrl
+        })
+        .ToList();
+}
+
+}

@@ -1,0 +1,57 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
+
+namespace ApiGateway.Controllers
+{
+    [Route("api/v1/[controller]")]
+    [ApiController]
+    [Authorize] // Тільки для авторизованих користувачів!
+    public class RecommendationsController : ControllerBase
+    {
+        private readonly HttpClient _httpClient;
+        private readonly IConfiguration _config;
+
+        public RecommendationsController(IHttpClientFactory httpClientFactory, IConfiguration config)
+        {
+            _httpClient = httpClientFactory.CreateClient();
+            _config = config;
+        }
+
+        [HttpPost("generate")]
+        public async Task<IActionResult> GenerateRecommendations()
+        {
+            // 1. Дістаємо ID користувача з його JWT токена
+            var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdString))
+            {
+                return Unauthorized(new { message = "Недійсний токен: UserID не знайдено" });
+            }
+
+            // 2. Беремо URL Python-сервісу з docker-compose (environment)
+            // У тебе він називається Services__Recommendation
+            var pythonServiceUrl = _config["Services:Recommendation"]; 
+
+            try
+            {
+                // 3. Відправляємо POST запит на Python FastAPI
+                var targetUrl = $"{pythonServiceUrl}/api/v1/recommendations/generate/{userIdString}";
+                var response = await _httpClient.PostAsync(targetUrl, null);
+                
+                // 4. Читаємо відповідь і повертаємо її фронтенду
+                var data = await response.Content.ReadAsStringAsync();
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return Content(data, "application/json"); 
+                }
+                
+                return StatusCode((int)response.StatusCode, data);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Помилка зв'язку з сервісом рекомендацій", details = ex.Message });
+            }
+        }
+    }
+}

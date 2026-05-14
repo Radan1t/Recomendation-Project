@@ -1,0 +1,14 @@
+﻿namespace Shared.DTO.User;
+
+public class UserRegistrationDto
+{
+    public string Name { get; set; }
+    public string Surname { get; set; }
+    public string Email { get; set; }
+    public string Password { get; set; }
+    public DateTime DateOfBirth { get; set; }
+    public string Country { get; set; }
+    public List<string> ContentPriorities { get; set; }
+    public List<int> FavoriteGenreIds { get; set; }
+    public List<int> PreferredLanguageIds { get; set; }
+}

@@ -1,0 +1,21 @@
+import { Injectable, inject } from '@angular/core';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+
+@Injectable({ providedIn: 'root' })
+export class InteractionService {
+  private http = inject(HttpClient);
+  // Звертаємося до GATEWAY (порт 5000), а не до InteractionService (5002)
+  private apiUrl = 'http://localhost:5000/api/v1/interactions';
+
+  rateContent(contentId: number, score: number) {
+    return this.http.post(`${this.apiUrl}/rate`, { contentId, score });
+  }
+
+  toggleFavorite(contentId: number) {
+    return this.http.post<any>(`${this.apiUrl}/favorite`, { contentId });
+  }
+
+  getInteractionStatus(contentId: string) {
+    return this.http.get<any>(`${this.apiUrl}/status/${contentId}`);
+  }
+}

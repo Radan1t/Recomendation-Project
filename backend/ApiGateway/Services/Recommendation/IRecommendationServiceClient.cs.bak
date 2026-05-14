@@ -1,0 +1,15 @@
+using Shared.DTO.Recommendation;
+
+namespace ApiGateway.Services.Recommendation;
+
+public interface IRecommendationServiceClient
+{
+    // Для отримання схожих об'єктів (GET запит на основі ID контенту)
+    Task<List<RecommendedItemDto>> GetSimilarAsync(int contentId);
+    
+    // Для генерації нової гібридної сесії (POST запит для конкретного юзера)
+    Task<object> GenerateAsync(int userId);
+
+    // Старий метод (можна залишити, якщо він використовується в іншому місці)
+    Task<List<RecommendedItemDto>> GetAsync(RecommendationRequestDto dto);
+}

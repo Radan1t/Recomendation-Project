@@ -1,0 +1,36 @@
+using ApiGateway.Services.Recommendation;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Shared.DTO.Recommendation;
+
+namespace ApiGateway.Controllers;
+
+[Authorize]
+[ApiController]
+// Оновлюємо шлях, щоб він збігався з викликом із Angular
+[Route("api/v1/recommendations")] 
+public class RecommendationController : ControllerBase
+{
+    private readonly IRecommendationServiceClient _recs;
+
+    public RecommendationController(IRecommendationServiceClient recs)
+    {
+        _recs = recs;
+    }
+
+    // Існуючий метод для генерації персональних рекомендацій (Hybrid)
+    [HttpPost("generate/{userId}")]
+    public async Task<ActionResult> Generate(int userId)
+    {
+        return Ok(await _recs.GenerateAsync(userId));
+    }
+
+    // НОВИЙ МЕТОД: для отримання схожого контенту (те, що вантажить сторінка деталей)
+    [HttpGet("{id}")]
+    public async Task<ActionResult<List<RecommendedItemDto>>> GetSimilar(int id)
+    {
+        // Цей метод має звертатися до Python-сервісу
+        var results = await _recs.GetSimilarAsync(id);
+        return Ok(results);
+    }
+}

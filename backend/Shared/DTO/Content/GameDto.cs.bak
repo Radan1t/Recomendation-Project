@@ -1,0 +1,7 @@
+namespace Shared.DTO.Content;
+public class GameDto: ContentDto
+{
+    public string Developer { get; set; }
+    public string Publisher { get; set; }
+    public string PEGIRating { get; set; }
+}

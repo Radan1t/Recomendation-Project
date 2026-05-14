@@ -1,0 +1,97 @@
+﻿using ContentService.Models.RAWG;
+using Shared.DTO.Content;
+using Microsoft.Extensions.Configuration;
+using System;
+using System.Linq;
+using System.Net.Http;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+namespace ContentService.Services
+{
+    public class RawgIntegrationService
+    {
+        private readonly HttpClient _httpClient;
+        private readonly GameImportService _gameImportService;
+        private readonly string _apiKey;
+
+        public RawgIntegrationService(HttpClient httpClient, IConfiguration config, GameImportService gameImportService)
+        {
+            _httpClient = httpClient;
+            _httpClient.BaseAddress = new Uri(config["RawgApi:BaseUrl"]);
+            _apiKey = config["RawgApi:ApiKey"];
+            _gameImportService = gameImportService;
+        }
+
+        public async Task ImportGamesFromRawgAsync(int page = 1, int pageSize = 20)
+        {
+            string requestUri = $"games?key={_apiKey}&page={page}&page_size={pageSize}";
+            var response = await _httpClient.GetAsync(requestUri);
+            response.EnsureSuccessStatusCode();
+
+            var jsonString = await response.Content.ReadAsStringAsync();
+            var rawgData = JsonSerializer.Deserialize<RawgResponse>(jsonString);
+
+            if (rawgData?.Results == null) return;
+
+            foreach (var rawgGame in rawgData.Results)
+            {
+                string detailedDescription = "Опис відсутній";
+                string developerName = "Невідомий розробник";
+                string publisherName = "Невідомий видавець";
+
+                try
+                {
+                    string detailUri = $"games/{rawgGame.Id}?key={_apiKey}";
+                    var detailResponse = await _httpClient.GetAsync(detailUri);
+
+                    if (detailResponse.IsSuccessStatusCode)
+                    {
+                        var detailJson = await detailResponse.Content.ReadAsStringAsync();
+                        var details = JsonSerializer.Deserialize<RawgGameDetails>(detailJson);
+
+                        if (details != null)
+                        {
+                            if (!string.IsNullOrWhiteSpace(details.DescriptionRaw))
+                                detailedDescription = details.DescriptionRaw;
+
+                            if (details.Developers != null && details.Developers.Any())
+                                developerName = details.Developers.First().Name;
+
+                            if (details.Publishers != null && details.Publishers.Any())
+                                publisherName = details.Publishers.First().Name;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Помилка при отриманні деталей для гри {rawgGame.Id}: {ex.Message}");
+                }
+
+                var importDto = new GameImportDto
+                {
+                    ExternalID = rawgGame.Id.ToString(),
+                    ExternalSource = "RAWG",
+                    Title = rawgGame.Name ?? "Без назви",
+                    Description = detailedDescription,
+                    Developer = developerName,
+                    Publisher = publisherName,
+                    ReleaseDate = rawgGame.Released ?? DateTime.UtcNow,
+
+                    
+                    AverageRating = rawgGame.Rating * 2,
+
+                    PosterURL = rawgGame.BackgroundImage ?? string.Empty,
+                    PEGIRating = rawgGame.EsrbRating?.Name ?? "Unrated",
+                    Genres = rawgGame.Genres?.Select(g => g.Name).ToList() ?? new System.Collections.Generic.List<string>(),
+                    Tags = rawgGame.Tags?.Select(t => t.Name).ToList() ?? new System.Collections.Generic.List<string>(),
+
+                    
+                    Languages = new System.Collections.Generic.List<string> { "en" }
+                };
+
+                await _gameImportService.ImportGameAsync(importDto);
+            }
+        }
+    }
+}

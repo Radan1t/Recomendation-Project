@@ -1,4 +1,4 @@
-using ApiGateway.Services.Content;
+﻿using ApiGateway.Services.Content;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Shared.DTO.Content;
@@ -23,3 +23,4 @@ public class ContentController : ControllerBase
         return Ok(await _content.GetAllAsync());
     }
 }
+

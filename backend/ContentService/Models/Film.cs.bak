@@ -1,0 +1,9 @@
+namespace ContentService.Entities
+{
+    public class Film : Content
+    {
+        public string Director { get; set; }
+        public int DurationMinutes { get; set; }
+        public decimal BoxOffice { get; set; }
+    }
+}

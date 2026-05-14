@@ -1,0 +1,23 @@
+from sqlalchemy import create_engine
+import pandas as pd
+
+# URL підключення до контейнера PostgreSQL
+USER_DB_URL = "postgresql://admin:password123@postgres:5432/UserDb"
+CONTENT_DB_URL = "postgresql://admin:password123@postgres:5432/ContentDb"
+INTERACT_DB_URL = "postgresql://admin:password123@postgres:5432/InteractionDb"
+
+engine_user = create_engine(USER_DB_URL)
+engine_content = create_engine(CONTENT_DB_URL)
+engine_interact = create_engine(INTERACT_DB_URL)
+
+def fetch_from_user(query: str, params=None):
+    with engine_user.connect() as conn:
+        return pd.read_sql(query, conn, params=params)
+
+def fetch_from_content(query: str, params=None):
+    with engine_content.connect() as conn:
+        return pd.read_sql(query, conn, params=params)
+
+def fetch_from_interact(query: str, params=None):
+    with engine_interact.connect() as conn:
+        return pd.read_sql(query, conn, params=params)

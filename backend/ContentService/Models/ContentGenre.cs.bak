@@ -1,0 +1,10 @@
+﻿namespace ContentService.Entities
+{
+    public class ContentGenre
+    {
+        public int ContentID { get; set; }
+        public Content Content { get; set; }
+        public int GenreID { get; set; }
+        public Genre Genre { get; set; }
+    }
+}

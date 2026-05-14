@@ -1,0 +1,85 @@
+﻿using System.Threading.Tasks;
+using ContentService.Data;
+using ContentService.Entities;
+using Microsoft.EntityFrameworkCore;
+
+namespace ContentService.Repositories
+{
+    public class GameRepository : IGameRepository
+    {
+        private readonly ContentDbContext _context;
+        public GameRepository(ContentDbContext context) => _context = context;
+        public async Task<bool> ExistsAsync(string externalId, string externalSource) =>
+            await _context.Games.AnyAsync(g => g.ExternalID == externalId && g.ExternalSource == externalSource);
+        public async Task AddAsync(Game game) => await _context.Games.AddAsync(game);
+    }
+
+    public class GenreRepository : IGenreRepository
+    {
+        private readonly ContentDbContext _context;
+        public GenreRepository(ContentDbContext context) => _context = context;
+        public async Task<Genre> GetByNameAsync(string name) => await _context.Genres.FirstOrDefaultAsync(g => g.Name == name);
+        public async Task AddAsync(Genre genre) => await _context.Genres.AddAsync(genre);
+    }
+
+    public class TagRepository : ITagRepository
+    {
+        private readonly ContentDbContext _context;
+        public TagRepository(ContentDbContext context) => _context = context;
+        public async Task<Tag> GetByNameAsync(string name) => await _context.Tags.FirstOrDefaultAsync(t => t.Name == name);
+        public async Task AddAsync(Tag tag) => await _context.Tags.AddAsync(tag);
+    }
+
+    public class UnitOfWork : IUnitOfWork
+    {
+        private readonly ContentDbContext _context;
+        public UnitOfWork(ContentDbContext context) => _context = context;
+        public async Task SaveChangesAsync() => await _context.SaveChangesAsync();
+    }
+    public class FilmRepository : IFilmRepository
+    {
+        private readonly ContentDbContext _context;
+        public FilmRepository(ContentDbContext context) => _context = context;
+        public async Task<bool> ExistsAsync(string externalId, string externalSource) =>
+            await _context.Films.AnyAsync(f => f.ExternalID == externalId && f.ExternalSource == externalSource);
+        public async Task AddAsync(Film film) => await _context.Films.AddAsync(film);
+    }
+
+    public class SeriesRepository : ISeriesRepository
+    {
+        private readonly ContentDbContext _context;
+        public SeriesRepository(ContentDbContext context) => _context = context;
+        public async Task<bool> ExistsAsync(string externalId, string externalSource) =>
+            await _context.Series.AnyAsync(s => s.ExternalID == externalId && s.ExternalSource == externalSource);
+        public async Task AddAsync(Series series) => await _context.Series.AddAsync(series);
+    }
+    public class BookRepository : IBookRepository
+    {
+        private readonly ContentDbContext _context;
+        public BookRepository(ContentDbContext context) => _context = context;
+
+        public async Task<bool> ExistsAsync(string externalId, string externalSource) =>
+            await _context.Books.AnyAsync(b => b.ExternalID == externalId && b.ExternalSource == externalSource);
+
+        public async Task AddAsync(Book book) => await _context.Books.AddAsync(book);
+    }
+    public class LanguageRepository : ILanguageRepository
+    {
+        private readonly ContentDbContext _context;
+
+        public LanguageRepository(ContentDbContext context)
+        {
+            _context = context;
+        }
+
+        public async Task<Language> GetByCodeAsync(string code)
+        {
+            return await _context.Languages.FirstOrDefaultAsync(l => l.Code == code);
+        }
+
+        public async Task AddAsync(Language language)
+        {
+            await _context.Languages.AddAsync(language);
+        }
+    }
+}

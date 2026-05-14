@@ -1,0 +1,199 @@
+import { Component, OnInit, inject, ChangeDetectorRef, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
+import { ContentService } from '../../core/services/content.service'; 
+import { RecommendationService } from '../../core/services/recommendation.service'; 
+import { of, Subject } from 'rxjs';
+import { switchMap, map, catchError, debounceTime, distinctUntilChanged } from 'rxjs/operators';
+
+export interface HomeItem {
+  id: number;
+  title: string;
+  rating: string;
+  imageUrl: string;
+  category: string;
+}
+
+interface ContentSection {
+  title: string;
+  items: HomeItem[];
+}
+
+@Component({
+  selector: 'app-home',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  templateUrl: './home.component.html',
+  styleUrls: ['./home.component.scss']
+})
+export class HomeComponent implements OnInit {
+  displaySections: ContentSection[] = [];
+  
+  // Кеш рекомендацій
+  private recommendationsCache: ContentSection[] = [];
+  
+  // --- ЗМІННІ ПОШУКУ ---
+  searchQuery: string = '';
+  searchResults: any[] = [];
+  isSearchDropdownOpen: boolean = false;
+  private searchSubject = new Subject<string>();
+  
+  private contentService = inject(ContentService);
+  private recommendationService = inject(RecommendationService);
+  private router = inject(Router);
+  private cdr = inject(ChangeDetectorRef);
+  private platformId = inject(PLATFORM_ID);
+
+  ngOnInit() {
+    if (isPlatformBrowser(this.platformId)) {
+      this.initDashboard();
+      this.setupGlobalSearch(); // Ініціалізуємо підписку на пошук
+    }
+  }
+
+  private initDashboard() {
+    this.setupDynamicSections();
+    this.loadEnrichedRecommendations();
+  }
+
+  // --- ЛОГІКА ЖИВОГО ГЛОБАЛЬНОГО ПОШУКУ ---
+  private setupGlobalSearch() {
+    this.searchSubject.pipe(
+      debounceTime(300), // Чекаємо 300мс після того, як користувач закінчив друкувати
+      distinctUntilChanged(), // Робимо запит тільки якщо текст дійсно змінився
+      switchMap(query => {
+        if (!query.trim()) {
+          this.isSearchDropdownOpen = false;
+          return of([]); // Повертаємо порожній список, якщо інпут порожній
+        }
+        
+        // Звертаємось до глобального пошуку в БД (Додайте метод searchGlobalContent у ваш ContentService)
+        // Якщо такого методу ще немає, використовуйте той, що є, напр. searchContent(query)
+        return this.contentService.searchGlobalContent(query).pipe(
+          catchError(err => {
+            console.error('Помилка глобального пошуку:', err);
+            return of([]);
+          })
+        );
+      })
+    ).subscribe((results: any[]) => {
+      this.searchResults = results;
+      this.isSearchDropdownOpen = this.searchResults.length > 0;
+      this.cdr.detectChanges();
+    });
+  }
+
+  // Викликається з HTML при введенні тексту
+  onSearchInput() {
+    this.searchSubject.next(this.searchQuery);
+  }
+
+  // Закриває список результатів, якщо клікнули поза інпутом
+  closeSearchDropdown() {
+    setTimeout(() => {
+      this.isSearchDropdownOpen = false;
+      this.cdr.detectChanges();
+    }, 200); // Таймаут потрібен, щоб встигла спрацювати подія (click) по елементу списку
+  }
+
+  // Перехід на сторінку конкретного контенту з результатів пошуку
+  goToSearchResult(result: any) {
+    this.isSearchDropdownOpen = false;
+    this.searchQuery = '';
+    const id = result.id || result.ContentID || result.Id;
+    this.router.navigate(['/content', id]);
+  }
+  // ----------------------------------------
+
+  setupDynamicSections() {
+    const saved = localStorage.getItem('user_priorities');
+    const priorities: string[] = saved ? JSON.parse(saved) : ['Games', 'Films', 'Series', 'Books'];
+
+    this.recommendationsCache = [
+      { title: 'Explore all', items: [] },
+      ...priorities.map(p => ({ title: p, items: [] }))
+    ];
+  }
+
+  loadEnrichedRecommendations() {
+    this.recommendationService.generateRecommendations().pipe(
+      switchMap((recResponse: any) => {
+        if (!recResponse?.recommendations?.length) {
+          return of({ recs: [], details: [] });
+        }
+
+        const recs = recResponse.recommendations;
+        const ids = recs.map((r: any) => r.ContentID || r.contentID);
+
+        return this.contentService.getContentDetailsByIds(ids).pipe(
+          map(details => ({ recs, details: details || [] })),
+          catchError(() => of({ recs, details: [] }))
+        );
+      })
+    ).subscribe({
+      next: (data: any) => {
+        const { recs, details } = data;
+        if (!recs.length) return;
+
+        const enrichedItems: HomeItem[] = recs.map((rec: any) => {
+          const recId = rec.ContentID || rec.contentID;
+          const detail = details.find((d: any) => (d.contentID === recId || d.ContentID === recId));
+          
+          const rawCat = (detail?.contentType || detail?.ContentType || '').toLowerCase();
+          let category = 'Films';
+          if (rawCat.includes('game')) category = 'Games';
+          else if (rawCat.includes('series')) category = 'Series';
+          else if (rawCat.includes('book')) category = 'Books';
+
+          return {
+            id: recId,
+            title: detail?.title || detail?.Title || rec.Title,
+            rating: (rec.hybrid_score * 10).toFixed(1),
+            imageUrl: detail?.posterUrl || detail?.PosterUrl || 
+                      `https://placehold.co/280x400/1a1a1a/ffffff?text=${encodeURIComponent(rec.Title)}`,
+            category: category
+          };
+        });
+
+        enrichedItems.sort((a, b) => parseFloat(b.rating) - parseFloat(a.rating));
+        this.recommendationsCache[0].items = enrichedItems;
+
+        this.recommendationsCache.forEach(section => {
+          if (section.title !== 'Explore all') {
+            section.items = enrichedItems.filter((item: HomeItem) => 
+              item.category.toLowerCase() === section.title.toLowerCase()
+            );
+          }
+        });
+
+        this.displaySections = JSON.parse(JSON.stringify(this.recommendationsCache));
+        this.cdr.detectChanges();
+      },
+      error: (err) => console.error('CRITICAL ERROR:', err)
+    });
+  }
+
+  navigateTo(type: string) {
+    this.router.navigate(['/browse'], { queryParams: { type: type } });
+  }
+
+  goToContent(id: number) {
+    this.router.navigate(['/content', id]);
+  }
+
+  onImageError(event: Event) {
+    (event.target as HTMLImageElement).src = 'https://placehold.co/280x400/1a1a1a/ffffff?text=No+Image';
+  }
+
+  onSearchImageError(event: Event) {
+    (event.target as HTMLImageElement).src = 'https://placehold.co/50x70/1a1a1a/ffffff?text=No+Img';
+  }
+
+  logout() {
+    if (isPlatformBrowser(this.platformId)) {
+      localStorage.clear();
+      this.router.navigate(['/']); 
+    }
+  }
+}

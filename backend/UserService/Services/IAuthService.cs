@@ -1,0 +1,14 @@
+﻿using Shared.DTO.User;
+using UserService.Data;
+using UserService.Entities;
+
+
+namespace UserService.Services;
+
+public interface IAuthService
+{
+    Task<bool> RegisterUserAsync(UserRegistrationDto dto);
+    Task<LoginResponseDto> LoginAsync(UserLoginDto dto);
+}
+
+

@@ -1,0 +1,13 @@
+using System;
+
+namespace InteractionService.Entities
+{
+    public class InteractionLog
+    {
+        public int LogID { get; set; }
+        public string ActionType { get; set; }
+        public DateTime Timestamp { get; set; }
+        public int UserID { get; set; }
+        public int ContentID { get; set; }
+    }
+}

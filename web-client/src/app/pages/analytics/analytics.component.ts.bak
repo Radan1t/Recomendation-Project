@@ -1,0 +1,97 @@
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { AnalyticsService } from '../../core/services/analytics.service';
+import { BaseChartDirective } from 'ng2-charts';
+import { Chart, registerables, ChartConfiguration, ChartType, ChartData } from 'chart.js';
+
+Chart.register(...registerables);
+
+@Component({
+  selector: 'app-analytics',
+  templateUrl: './analytics.component.html',
+  styleUrls: ['./analytics.component.scss'],
+  standalone: true,
+  imports: [CommonModule, BaseChartDirective]
+})
+export class AnalyticsComponent implements OnInit {
+  
+  public pieChartType: ChartType = 'pie';
+  public pieChartData: ChartData<'pie'> = { labels: [], datasets: [] };
+
+  public lineChartType: ChartType = 'line';
+  public lineChartData: ChartData<'line'> = { labels: [], datasets: [] };
+
+  // Налаштування кольорів для темної теми
+  public chartOptions: ChartConfiguration['options'] = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { 
+        display: true, 
+        position: 'bottom',
+        labels: { color: '#ffffff', font: { family: 'Verdana', size: 12 } }
+      }
+    },
+    scales: {
+      x: { grid: { color: '#333' }, ticks: { color: '#aaa' } },
+      y: { grid: { color: '#333' }, ticks: { color: '#aaa' } }
+    }
+  };
+
+  constructor(
+    private analyticsService: AnalyticsService,
+    private cdr: ChangeDetectorRef // Додано для примусового оновлення
+  ) {}
+
+  ngOnInit(): void {
+    this.loadGenreDistribution();
+    this.loadActivityDynamics();
+  }
+
+  loadGenreDistribution() {
+    this.analyticsService.getGenreDistribution().subscribe((data: any[]) => {
+      if (data && data.length > 0) {
+        this.pieChartData = {
+          labels: data.map(d => d.name),
+          datasets: [{
+            data: data.map(d => d.value),
+            backgroundColor: ['#e74c3c', '#3498db', '#f1c40f', '#2ecc71', '#9b59b6'],
+            borderColor: '#1a1a1a',
+            borderWidth: 2
+          }]
+        };
+        this.cdr.detectChanges(); // Форсуємо відмальовку
+      }
+    });
+  }
+
+  loadActivityDynamics() {
+    this.analyticsService.getActivityDynamics().subscribe((data: any[]) => {
+      if (data && data.length > 0) {
+        const labels = [...new Set(data.map(d => new Date(d.date).toLocaleDateString()))];
+        this.lineChartData = {
+          labels: labels,
+          datasets: [
+            {
+              data: labels.map(l => data.find(d => d.type === 'Оцінки' && new Date(d.date).toLocaleDateString() === l)?.count || 0),
+              label: 'Рейтинги',
+              borderColor: '#f1c40f',
+              backgroundColor: 'rgba(241, 196, 15, 0.1)',
+              fill: true,
+              tension: 0.4
+            },
+            {
+              data: labels.map(l => data.find(d => d.type === 'Обране' && new Date(d.date).toLocaleDateString() === l)?.count || 0),
+              label: 'Обране',
+              borderColor: '#ffffff',
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              fill: true,
+              tension: 0.4
+            }
+          ]
+        };
+        this.cdr.detectChanges(); // Форсуємо відмальовку
+      }
+    });
+  }
+}

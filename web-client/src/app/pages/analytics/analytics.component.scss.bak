@@ -1,0 +1,77 @@
+.analytics-page {
+  background: #0d0d0d; // Глибокий чорний як у Fallout/Dark Souls
+  min-height: 100vh;
+  padding: 40px;
+  position: relative;
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: #fff;
+}
+
+.admin-header {
+  margin-bottom: 50px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  
+  h1 {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #fff;
+    .v-line { color: #f1c40f; margin: 0 15px; }
+    small { color: #888; font-weight: 300; }
+  }
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+  gap: 30px;
+}
+
+.glass-card {
+  background: rgba(30, 30, 30, 0.6); // Напівпрозорий темний
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 4px; // Гостріші кути для ігрового стилю
+  padding: 30px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+
+  &:hover {
+    border-color: rgba(241, 196, 15, 0.3); // Жовте підсвічування при ховері
+  }
+
+  .card-header {
+    margin-bottom: 25px;
+    border-left: 4px solid #f1c40f;
+    padding-left: 15px;
+    
+    h3 {
+      margin: 0;
+      text-transform: uppercase;
+      font-size: 1.1rem;
+      letter-spacing: 1px;
+    }
+  }
+}
+
+.chart-container {
+  position: relative;
+  height: 400px;
+  width: 100%;
+}
+
+.loader {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f1c40f;
+  font-family: 'Courier New', Courier, monospace;
+  text-transform: uppercase;
+  animation: blink 1.5s infinite;
+}
+
+@keyframes blink {
+  0% { opacity: 0.2; }
+  50% { opacity: 1; }
+  100% { opacity: 0.2; }
+}

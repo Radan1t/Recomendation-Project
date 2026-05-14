@@ -1,0 +1,19 @@
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+
+@Injectable({ providedIn: 'root' })
+export class AnalyticsService {
+  // Вказуємо пряму адресу до твого API Gateway
+  private baseUrl = 'http://localhost:5000/api/v1/analytics'; 
+
+  constructor(private http: HttpClient) {}
+
+  getActivityDynamics(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.baseUrl}/activity`);
+  }
+
+  getGenreDistribution(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.baseUrl}/genres-distribution`);
+  }
+}

@@ -1,0 +1,50 @@
+using Microsoft.EntityFrameworkCore;
+using InteractionService.Entities;
+
+namespace InteractionService.Data;
+
+public class InteractionDbContext : DbContext
+{
+    public InteractionDbContext(DbContextOptions<InteractionDbContext> options)
+        : base(options)
+    {
+    }
+
+    // Таблиці для взаємодій
+    public DbSet<UserRating> UserRatings { get; set; }
+    public DbSet<UserFavorite> UserFavorites { get; set; }
+    public DbSet<InteractionLog> InteractionLogs { get; set; }
+
+    // Таблиці для системи рекомендацій
+    public DbSet<RecommendationSession> RecommendationSessions { get; set; }
+    public DbSet<RecommendedContent> RecommendedContents { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    base.OnModelCreating(modelBuilder);
+
+    // Вказуємо первинний ключ для сесії (EF не бачить його через назву SessionID)
+    modelBuilder.Entity<RecommendationSession>()
+        .HasKey(s => s.SessionID);
+
+    // Вказуємо первинний ключ для логів
+    modelBuilder.Entity<InteractionLog>()
+        .HasKey(l => l.LogID);
+
+    // Складені ключі (ті, що ми робили раніше)
+    modelBuilder.Entity<UserRating>()
+        .HasKey(r => new { r.UserID, r.ContentID });
+
+    modelBuilder.Entity<UserFavorite>()
+        .HasKey(f => new { f.UserID, f.ContentID });
+
+    modelBuilder.Entity<RecommendedContent>()
+        .HasKey(rc => new { rc.SessionID, rc.ContentID });
+
+    // Зв'язок один-до-багатьох
+    modelBuilder.Entity<RecommendedContent>()
+        .HasOne(rc => rc.Session)
+        .WithMany(s => s.RecommendedContents)
+        .HasForeignKey(rc => rc.SessionID);
+}
+}

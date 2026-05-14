@@ -1,4 +1,4 @@
-namespace ApiGateway.Middlewares;
+﻿namespace ApiGateway.Middlewares;
 
 public class ExceptionHandlingMiddleware
 {
@@ -25,3 +25,4 @@ public class ExceptionHandlingMiddleware
         }
     }
 }
+

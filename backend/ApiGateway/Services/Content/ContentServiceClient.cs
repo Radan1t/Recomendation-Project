@@ -1,4 +1,4 @@
-using ApiGateway.Config;
+﻿using ApiGateway.Config;
 using Microsoft.Extensions.Options;
 using Shared.DTO.Content;
 
@@ -21,3 +21,4 @@ public class ContentServiceClient : IContentServiceClient
             $"{_urls.ContentService}/content");
     }
 }
+

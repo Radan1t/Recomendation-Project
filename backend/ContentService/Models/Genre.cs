@@ -1,0 +1,11 @@
+﻿using System.Collections.Generic;
+
+namespace ContentService.Entities
+{
+    public class Genre
+    {
+        public int GenreID { get; set; }
+        public string Name { get; set; }
+        public ICollection<ContentGenre> ContentGenres { get; set; }
+    }
+}

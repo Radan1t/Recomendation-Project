@@ -1,0 +1,26 @@
+import { ApplicationConfig } from '@angular/core';
+import { provideRouter } from '@angular/router';
+import { routes } from './app.routes';
+
+// Імпортуємо все необхідне для HTTP в одному рядку
+import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http'; 
+import { authInterceptor } from './core/interceptors/auth.interceptor';
+
+// Імпортуємо провайдер для графіків Chart.js
+import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    // 1. ОБ'ЄДНАНИЙ виклик HttpClient (і fetch, і інтерцептор разом)
+    provideHttpClient(
+      withFetch(),
+      withInterceptors([authInterceptor])
+    ),
+    
+    // 2. Маршрутизація
+    provideRouter(routes),
+    
+    // 3. Реєстрація графіків для всього додатку
+    provideCharts(withDefaultRegisterables()) 
+  ]
+};

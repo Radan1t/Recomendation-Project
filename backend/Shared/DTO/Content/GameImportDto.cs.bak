@@ -1,0 +1,25 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Shared.DTO.Content
+{
+    public class GameImportDto
+    {
+        public string ExternalID { get; set; }
+        public string ExternalSource { get; set; }
+        public string Title { get; set; }
+        public string Description { get; set; }
+        public DateTime ReleaseDate { get; set; }
+        public double AverageRating { get; set; }
+        public string PosterURL { get; set; }
+        public string Developer { get; set; }
+        public string Publisher { get; set; }
+        public string PEGIRating { get; set; }
+        public List<string> Genres { get; set; } = new List<string>();
+        public List<string> Tags { get; set; } = new List<string>();
+        public List<string> Languages { get; set; } = new List<string>();
+    }
+}

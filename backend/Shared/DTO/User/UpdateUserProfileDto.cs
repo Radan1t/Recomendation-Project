@@ -1,4 +1,4 @@
-public class UpdateUserProfileDto
+﻿public class UpdateUserProfileDto
 {
     public List<string> PreferredGaners { get; set; }
     public List<string> PreferreLanguages { get; set; }

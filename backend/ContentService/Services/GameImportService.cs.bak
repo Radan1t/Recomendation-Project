@@ -1,0 +1,126 @@
+﻿using ContentService.Entities;
+using ContentService.Repositories;
+using Shared.DTO.Content;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace ContentService.Services
+{
+    public class GameImportService
+    {
+        private readonly IGameRepository _gameRepository;
+        private readonly IGenreRepository _genreRepository;
+        private readonly ITagRepository _tagRepository;
+        private readonly ILanguageRepository _languageRepository;
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly IDictionarySyncService _syncService;
+
+        // СТВОРЮЄМО КЕШІ В ПАМ'ЯТІ (Сприймають "FPS" і "fps" як одне й те саме)
+        private readonly Dictionary<string, Genre> _genreCache = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, Tag> _tagCache = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, Language> _languageCache = new(StringComparer.OrdinalIgnoreCase);
+
+        public GameImportService(
+            IGameRepository gameRepo,
+            IGenreRepository genreRepo,
+            ITagRepository tagRepo,
+            ILanguageRepository languageRepo,
+            IUnitOfWork uow,
+            IDictionarySyncService syncService)
+        {
+            _gameRepository = gameRepo;
+            _genreRepository = genreRepo;
+            _tagRepository = tagRepo;
+            _languageRepository = languageRepo;
+            _unitOfWork = uow;
+            _syncService = syncService;
+        }
+
+        public async Task ImportGameAsync(GameImportDto dto)
+        {
+            if (await _gameRepository.ExistsAsync(dto.ExternalID, dto.ExternalSource)) return;
+
+            var newGame = new Game
+            {
+                ExternalID = dto.ExternalID,
+                ExternalSource = dto.ExternalSource,
+                Title = dto.Title,
+                Description = dto.Description,
+                ReleaseDate = dto.ReleaseDate.ToUniversalTime(),
+                AverageRating = dto.AverageRating,
+                PosterURL = dto.PosterURL,
+                Developer = dto.Developer,
+                Publisher = dto.Publisher,
+                PEGIRating = dto.PEGIRating
+            };
+
+            // 1. ОБРОБКА ЖАНРІВ
+            var uniqueGenres = dto.Genres.Where(g => !string.IsNullOrWhiteSpace(g)).Select(g => g.Trim()).Distinct();
+            foreach (var genreName in uniqueGenres)
+            {
+                // Перевіряємо спочатку в нашому кеші!
+                if (!_genreCache.TryGetValue(genreName, out var genre))
+                {
+                    // Якщо в кеші нема, перевіряємо в БД
+                    genre = await _genreRepository.GetByNameAsync(genreName);
+                    if (genre == null)
+                    {
+                        // Якщо ніде нема - створюємо РІВНО ОДИН РАЗ
+                        genre = new Genre { Name = genreName };
+                        await _genreRepository.AddAsync(genre);
+                        await _unitOfWork.SaveChangesAsync(); // Зберігаємо, щоб отримати ID
+                        await _syncService.SyncGenreAsync(genreName);
+                    }
+                    // Обов'язково додаємо в кеш для наступних ігор!
+                    _genreCache[genreName] = genre;
+                }
+                newGame.ContentGenres.Add(new ContentGenre { Genre = genre });
+            }
+
+            // 2. ОБРОБКА ТЕГІВ
+            // Переводимо всі теги в нижній регістр, щоб "FPS", "fps" і "Fps" були однаковими
+            var uniqueTags = dto.Tags.Where(t => !string.IsNullOrWhiteSpace(t)).Select(t => t.Trim().ToLower()).Distinct();
+            foreach (var tagName in uniqueTags)
+            {
+                if (!_tagCache.TryGetValue(tagName, out var tag))
+                {
+                    tag = await _tagRepository.GetByNameAsync(tagName);
+                    if (tag == null)
+                    {
+                        tag = new Tag { Name = tagName };
+                        await _tagRepository.AddAsync(tag);
+                        await _unitOfWork.SaveChangesAsync(); 
+                        await _syncService.SyncTagAsync(tagName);
+                    }
+                    _tagCache[tagName] = tag;
+                }
+                newGame.ContentTags.Add(new ContentTag { Tag = tag });
+            }
+
+            // 3. ОБРОБКА МОВ
+            var uniqueLangs = dto.Languages.Where(l => !string.IsNullOrWhiteSpace(l)).Select(l => l.Trim().ToLower()).Distinct();
+            foreach (var langCode in uniqueLangs)
+            {
+                if (!_languageCache.TryGetValue(langCode, out var language))
+                {
+                    language = await _languageRepository.GetByCodeAsync(langCode);
+                    if (language == null)
+                    {
+                        language = new Language { Code = langCode, Name = langCode };
+                        await _languageRepository.AddAsync(language);
+                        await _unitOfWork.SaveChangesAsync();
+                        await _syncService.SyncLanguageAsync(langCode);
+                    }
+                    _languageCache[langCode] = language;
+                }
+                newGame.ContentLanguages.Add(new ContentLanguage { Language = language });
+            }
+
+            // Зберігаємо гру з уже правильно прив'язаними (або новими, або існуючими) сутностями
+            await _gameRepository.AddAsync(newGame);
+            await _unitOfWork.SaveChangesAsync();
+        }
+    }
+}

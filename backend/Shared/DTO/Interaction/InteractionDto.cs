@@ -1,4 +1,4 @@
-namespace Shared.DTO.Interaction;
+﻿namespace Shared.DTO.Interaction;
 public class InteractionDto
 {
     public int InteractionId { get; set; }
@@ -6,3 +6,4 @@ public class InteractionDto
     public string ActionType { get; set; }
     public DateTime ActionDate { get; set; }
 }
+

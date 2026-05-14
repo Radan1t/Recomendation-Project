@@ -1,0 +1,76 @@
+using System.Text;
+using ApiGateway.Config;
+using ApiGateway.Middlewares;
+using ApiGateway.Services.Auth;
+using ApiGateway.Services.Content;
+using ApiGateway.Services.Recommendation;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Controllers + Swagger
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+// Config
+builder.Services.Configure<ServiceUrls>(
+    builder.Configuration.GetSection("ServiceUrls"));
+
+// HttpClient
+builder.Services.AddHttpClient();
+
+// ==========================================
+// 1. ДОДАНО: Налаштування CORS
+// ==========================================
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
+// JWT Auth
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = false, 
+            ValidateAudience = false, 
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "ТвійСуперСекретнийКлючЗAuthServiceЯкийМаєБутиДовгим"))
+        };
+    });
+
+// DI clients
+builder.Services.AddScoped<IAuthServiceClient, AuthServiceClient>();
+builder.Services.AddScoped<IContentServiceClient, ContentServiceClient>();
+builder.Services.AddScoped<IRecommendationServiceClient, RecommendationServiceClient>();
+
+var app = builder.Build();
+Console.WriteLine(">>>> GATEWAY VERSION 2.0 STARTED <<<<");
+// Middleware
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+// ==========================================
+// 2. ДОДАНО: Використання CORS (Обов'язково ПЕРЕД Auth та MapControllers)
+// ==========================================
+app.UseCors("AllowAll");
+
+app.UseSwagger();
+app.UseSwaggerUI();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapControllers();
+
+app.Run();

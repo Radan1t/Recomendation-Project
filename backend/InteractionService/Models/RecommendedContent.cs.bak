@@ -1,0 +1,12 @@
+﻿namespace InteractionService.Entities
+{
+    public class RecommendedContent
+    {
+        public int ContentID { get; set; }
+        public int SessionID { get; set; }
+        public RecommendationSession Session { get; set; }
+
+        public int RankPosition { get; set; }
+        public double RelevanceScore { get; set; }
+    }
+}

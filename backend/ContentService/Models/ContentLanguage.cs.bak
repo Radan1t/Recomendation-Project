@@ -1,0 +1,10 @@
+﻿namespace ContentService.Entities
+{
+    public class ContentLanguage
+    {
+        public int ContentID { get; set; }
+        public Content Content { get; set; }
+        public int LanguageID { get; set; }
+        public Language Language { get; set; }
+    }
+}

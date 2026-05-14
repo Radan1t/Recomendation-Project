@@ -1,0 +1,136 @@
+using ContentService.Data;
+using ContentService.Providers;
+using ContentService.Services;
+using ContentService.Repositories; 
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// ==========================================
+// 1. НАЛАШТУВАННЯ БАЗИ ДАНИХ (PostgreSQL)
+// ==========================================
+builder.Services.AddDbContext<ContentDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// ==========================================
+// 2. РЕЄСТРАЦІЯ ВАШИХ СЕРВІСІВ (DI)
+// ==========================================
+// ВИПРАВЛЕНО: Залишено тільки одну правильну реєстрацію IContentService
+builder.Services.AddScoped<IContentService, ContentService.Services.ContentService>();
+builder.Services.AddHttpClient<IExternalContentProvider, SteamContentProvider>();
+
+// --- ДОДАНО ДЛЯ ІМПОРТУ З RAWG ТА РОБОТИ З БД ---
+
+// Реєстрація репозиторіїв (Патерн Repository)
+builder.Services.AddScoped<IGameRepository, GameRepository>();
+builder.Services.AddScoped<IGenreRepository, GenreRepository>();
+builder.Services.AddScoped<ITagRepository, TagRepository>();
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<IFilmRepository, FilmRepository>();
+builder.Services.AddScoped<ISeriesRepository, SeriesRepository>();
+builder.Services.AddScoped<IBookRepository, BookRepository>();
+builder.Services.AddScoped<ILanguageRepository, LanguageRepository>();
+
+// Реєстрація сервісів логіки імпорту
+builder.Services.AddScoped<FilmImportService>();
+builder.Services.AddScoped<SeriesImportService>();
+builder.Services.AddScoped<GameImportService>();
+builder.Services.AddScoped<BookImportService>();
+
+// Реєстрація HTTP-клієнтів
+builder.Services.AddHttpClient<TmdbIntegrationService>();
+builder.Services.AddHttpClient<GoogleBooksIntegrationService>();
+builder.Services.AddHttpClient<IDictionarySyncService, DictionarySyncService>(); // Для синхронізації з UserService
+builder.Services.AddHttpClient<RawgIntegrationService>(); // Для запитів до RAWG API
+// ------------------------------------------------
+
+// ==========================================
+// 3. НАЛАШТУВАННЯ API ТА SWAGGER
+// ==========================================
+// ВИПРАВЛЕНО: Додано налаштування JSON для збереження PascalCase (ContentID, PosterUrl)
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = null;
+    });
+    
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+var app = builder.Build();
+
+// ==========================================
+// 4. АВТОМАТИЧНІ МІГРАЦІЇ
+// ==========================================
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var logger = services.GetRequiredService<ILogger<Program>>();
+    var maxRetries = 5;
+
+    for (int i = 0; i < maxRetries; i++)
+    {
+        try
+        {
+            var context = services.GetRequiredService<ContentDbContext>();
+            context.Database.Migrate();
+            logger.LogInformation("Міграції ContentDb успішно застосовано!");
+            break;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning($"Помилка підключення до БД (спроба {i + 1} з {maxRetries}). Чекаємо 3 секунди...");
+            if (i == maxRetries - 1)
+            {
+                logger.LogError(ex, "Критична помилка: не вдалося підключитися до бази даних після всіх спроб.");
+            }
+            else
+            {
+                System.Threading.Thread.Sleep(3000);
+            }
+        }
+    }
+}
+
+// ==========================================
+// 5. HTTP ПАЙПЛАЙН (Middleware)
+// ==========================================
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.MapControllers();
+
+// ==========================================
+// 6. MINIMAL API ЕНДПОІНТИ (Для Steam)
+// ==========================================
+app.MapGet("/contents", async (IExternalContentProvider provider) =>
+{
+    if (provider is SteamContentProvider steam)
+    {
+        var ids = await steam.GetAppIdsAsync(200);
+        var allContents = await steam.GetContentsByIdsAsync(ids);
+        return Results.Ok(allContents);
+    }
+
+    return Results.BadRequest("Steam provider not found");
+})
+.WithName("GetAllContents")
+.WithOpenApi();
+
+app.MapGet("/steam/appids", async (IExternalContentProvider provider) =>
+{
+    if (provider is SteamContentProvider steam)
+    {
+        var ids = await steam.GetAppIdsAsync(200);
+        return Results.Ok(ids);
+    }
+
+    return Results.BadRequest("Steam provider not found");
+})
+.WithName("GetSteamAppIds")
+.WithOpenApi();
+
+app.Run();

@@ -1,0 +1,11 @@
+﻿using System;
+
+namespace InteractionService.Entities
+{
+    public class UserFavorite
+    {
+        public int UserID { get; set; }
+        public int ContentID { get; set; }
+        public DateTime DateAdded { get; set; }
+    }
+}

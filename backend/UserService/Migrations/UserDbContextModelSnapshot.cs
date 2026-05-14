@@ -1,0 +1,290 @@
+﻿
+using System;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+using UserService.Data;
+
+#nullable disable
+
+namespace UserService.Migrations
+{
+    [DbContext(typeof(UserDbContext))]
+    partial class UserDbContextModelSnapshot : ModelSnapshot
+    {
+        protected override void BuildModel(ModelBuilder modelBuilder)
+        {
+#pragma warning disable 612, 618
+            modelBuilder
+                .HasAnnotation("ProductVersion", "8.0.24")
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
+
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("UserService.Entities.Genre", b =>
+                {
+                    b.Property<int>("GenreID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("GenreID"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("GenreID");
+
+                    b.ToTable("Genres");
+                });
+
+            modelBuilder.Entity("UserService.Entities.Language", b =>
+                {
+                    b.Property<int>("LanguageID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("LanguageID"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("LanguageID");
+
+                    b.ToTable("Languages");
+                });
+
+            modelBuilder.Entity("UserService.Entities.ProfileGenre", b =>
+                {
+                    b.Property<int>("UserID")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("GenreID")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UserProfileUserID")
+                        .HasColumnType("integer");
+
+                    b.HasKey("UserID", "GenreID");
+
+                    b.HasIndex("GenreID");
+
+                    b.HasIndex("UserProfileUserID");
+
+                    b.ToTable("ProfileGenres");
+                });
+
+            modelBuilder.Entity("UserService.Entities.ProfileLanguage", b =>
+                {
+                    b.Property<int>("UserID")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("LanguageID")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UserProfileUserID")
+                        .HasColumnType("integer");
+
+                    b.HasKey("UserID", "LanguageID");
+
+                    b.HasIndex("LanguageID");
+
+                    b.HasIndex("UserProfileUserID");
+
+                    b.ToTable("ProfileLanguages");
+                });
+
+            modelBuilder.Entity("UserService.Entities.ProfileTag", b =>
+                {
+                    b.Property<int>("UserID")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TagID")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UserProfileUserID")
+                        .HasColumnType("integer");
+
+                    b.HasKey("UserID", "TagID");
+
+                    b.HasIndex("TagID");
+
+                    b.HasIndex("UserProfileUserID");
+
+                    b.ToTable("ProfileTags");
+                });
+
+            modelBuilder.Entity("UserService.Entities.Tag", b =>
+                {
+                    b.Property<int>("TagID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("TagID"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("TagID");
+
+                    b.ToTable("Tags");
+                });
+
+            modelBuilder.Entity("UserService.Entities.User", b =>
+                {
+                    b.Property<int>("UserID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("UserID"));
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("RegistrationDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Surname")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("UserID");
+
+                    b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("UserService.Entities.UserProfile", b =>
+                {
+                    b.Property<int>("UserID")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Country")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("DateOfBirth")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserID");
+
+                    b.ToTable("UserProfiles");
+                });
+
+            modelBuilder.Entity("UserService.Entities.ProfileGenre", b =>
+                {
+                    b.HasOne("UserService.Entities.Genre", "Genre")
+                        .WithMany("ProfileGenres")
+                        .HasForeignKey("GenreID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("UserService.Entities.UserProfile", "UserProfile")
+                        .WithMany("ProfileGenres")
+                        .HasForeignKey("UserProfileUserID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Genre");
+
+                    b.Navigation("UserProfile");
+                });
+
+            modelBuilder.Entity("UserService.Entities.ProfileLanguage", b =>
+                {
+                    b.HasOne("UserService.Entities.Language", "Language")
+                        .WithMany("ProfileLanguages")
+                        .HasForeignKey("LanguageID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("UserService.Entities.UserProfile", "UserProfile")
+                        .WithMany("ProfileLanguages")
+                        .HasForeignKey("UserProfileUserID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Language");
+
+                    b.Navigation("UserProfile");
+                });
+
+            modelBuilder.Entity("UserService.Entities.ProfileTag", b =>
+                {
+                    b.HasOne("UserService.Entities.Tag", "Tag")
+                        .WithMany("ProfileTags")
+                        .HasForeignKey("TagID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("UserService.Entities.UserProfile", "UserProfile")
+                        .WithMany("ProfileTags")
+                        .HasForeignKey("UserProfileUserID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tag");
+
+                    b.Navigation("UserProfile");
+                });
+
+            modelBuilder.Entity("UserService.Entities.UserProfile", b =>
+                {
+                    b.HasOne("UserService.Entities.User", "User")
+                        .WithOne("Profile")
+                        .HasForeignKey("UserService.Entities.UserProfile", "UserID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("UserService.Entities.Genre", b =>
+                {
+                    b.Navigation("ProfileGenres");
+                });
+
+            modelBuilder.Entity("UserService.Entities.Language", b =>
+                {
+                    b.Navigation("ProfileLanguages");
+                });
+
+            modelBuilder.Entity("UserService.Entities.Tag", b =>
+                {
+                    b.Navigation("ProfileTags");
+                });
+
+            modelBuilder.Entity("UserService.Entities.User", b =>
+                {
+                    b.Navigation("Profile")
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("UserService.Entities.UserProfile", b =>
+                {
+                    b.Navigation("ProfileGenres");
+
+                    b.Navigation("ProfileLanguages");
+
+                    b.Navigation("ProfileTags");
+                });
+#pragma warning restore 612, 618
+        }
+    }
+}
+

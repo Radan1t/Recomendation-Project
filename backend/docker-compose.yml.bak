@@ -1,0 +1,173 @@
+version: '3.8'
+
+services:
+  # ---------------------------------------
+  # 1. БАЗА ДАНИХ (PostgreSQL)
+  # ---------------------------------------
+  postgres:
+    image: postgres:15-alpine
+    container_name: platform-postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password123
+    ports:
+      - "5432:5432" # Доступ із хоста (Visual Studio / PgAdmin локальний)
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - platform-network
+
+  # ---------------------------------------
+  # 2. UI ДЛЯ БАЗИ ДАНИХ (pgAdmin)
+  # ---------------------------------------
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: platform-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - platform-network
+
+  # ---------------------------------------
+  # 3. КЕШ (Redis)
+  # ---------------------------------------
+  redis:
+    image: redis:alpine
+    container_name: platform-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - platform-network
+
+  # ---------------------------------------
+  # 4. ВАШІ МІКРОСЕРВІСИ
+  # ---------------------------------------
+  
+  # Сервіс Аутентифікації
+  auth-service:
+    build:
+      context: .
+      dockerfile: AuthService/Dockerfile
+    container_name: auth-service
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=AuthDb;Username=admin;Password=password123
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+    ports:
+      - "5001:8080"
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - platform-network
+
+  # Сервіс Користувачів
+  user-service:
+    build:
+      context: .
+      dockerfile: UserService/Dockerfile
+    container_name: user-service
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=UserDb;Username=admin;Password=password123
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+    ports:
+      - "5002:8080"
+    depends_on:
+      - postgres
+    networks:
+      - platform-network
+
+  # Сервіс Контенту (ОНОВЛЕНО ДЛЯ RAWG ТА СИНХРОНІЗАЦІЇ)
+  content-service:
+    build:
+      context: .
+      dockerfile: ContentService/Dockerfile
+    container_name: content-service
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=ContentDb;Username=admin;Password=password123
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      
+      # URL до UserService усередині Docker-мережі (внутрішній порт 8080)
+      - UserService__BaseUrl=http://user-service:8080
+      
+      # Налаштування RAWG API
+      - RawgApi__BaseUrl=https://api.rawg.io/api/
+      - RawgApi__ApiKey=2a2a0e0ea23641e9becce8d1b6618562
+      - TmdbApi__BaseUrl=https://api.themoviedb.org/3/
+      - TmdbApi__ApiKey=97c613edd0f298d69a2b51aca44d6f1f
+    ports:
+      - "5003:8080"
+    depends_on:
+      - postgres
+      - user-service
+    networks:
+      - platform-network
+
+  # Сервіс Взаємодії
+  interaction-service:
+    build:
+      context: .
+      dockerfile: InteractionService/Dockerfile
+    container_name: interaction-service
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=InteractionDb;Username=admin;Password=password123
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      
+    ports:
+      - "5004:8080"
+    depends_on:
+      - postgres
+    networks:
+      - platform-network
+  # НОВИЙ СЕРВІС РЕКОМЕНДАЦІЙ НА PYTHON
+  recommendation-service:
+    build:
+      context: ./RecommendationService
+      dockerfile: Dockerfile
+    container_name: recommendation-service
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+    networks:
+      - platform-network
+
+  # API Gateway (Вхідна точка)
+  api-gateway:
+    build:
+      context: .
+      dockerfile: ApiGateway/Dockerfile
+    container_name: api-gateway
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - Services__Auth=http://auth-service:8080
+      - Services__User=http://user-service:8080
+      - Services__Content=http://content-service:8080
+      - Services__Interaction=http://interaction-service:8080
+      - Services__Recommendation=http://recommendation-service:8000
+    ports:
+      - "5000:8080"
+    depends_on:
+      - auth-service
+      - user-service
+      - content-service
+      - interaction-service
+      - recommendation-service
+    networks:
+      - platform-network
+
+volumes:
+  postgres_data:
+
+networks:
+  platform-network:
+    driver: bridge

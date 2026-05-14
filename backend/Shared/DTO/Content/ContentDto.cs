@@ -1,4 +1,4 @@
-namespace Shared.DTO.Content;
+﻿namespace Shared.DTO.Content;
 public class ContentDto
 {
     public int ContentId { get; set; }

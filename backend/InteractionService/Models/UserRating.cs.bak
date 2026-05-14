@@ -1,0 +1,12 @@
+using System;
+
+namespace InteractionService.Entities
+{
+    public class UserRating
+    {
+        public int UserID { get; set; }
+        public int ContentID { get; set; }
+        public DateTime DateRated { get; set; }
+        public int Score { get; set; }
+    }
+}

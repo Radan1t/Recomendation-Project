@@ -1,0 +1,144 @@
+using BCrypt.Net;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Shared.DTO.User;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using UserService.Data;
+using UserService.Entities;
+using Microsoft.Extensions.Logging;
+
+namespace UserService.Services;
+
+public class AuthService : IAuthService
+{
+    private readonly UserDbContext _context;
+    private readonly IConfiguration _config;
+    private readonly ILogger<AuthService> _logger; // Додано логер
+
+    public AuthService(UserDbContext context, IConfiguration config, ILogger<AuthService> logger) 
+    {
+        _context = context;
+        _config = config;
+        _logger = logger;
+    }
+
+    public async Task<bool> RegisterUserAsync(UserRegistrationDto dto)
+    {
+        try
+        {
+            _logger.LogInformation("[AuthService] Початок реєстрації для email: {Email}", dto.Email);
+
+            // 1. Перевірка, чи існує email
+            if (await _context.Users.AnyAsync(u => u.Email == dto.Email)) 
+            {
+                _logger.LogWarning("[AuthService] Спроба реєстрації з уже існуючим email: {Email}", dto.Email);
+                return false;
+            }
+
+            // 2. Створення об'єкта User та базового UserProfile
+            var user = new User
+            {
+                Name = dto.Name,
+                Surname = dto.Surname,
+                Email = dto.Email,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+                RegistrationDate = DateTime.UtcNow,
+                UserProfile = new UserProfile
+                {
+                    DateOfBirth = dto.DateOfBirth.ToUniversalTime(),
+                    Country = dto.Country,
+                    ContentPriorities = dto.ContentPriorities ?? new List<string>()
+                }
+            };
+
+            // 3. ПЕРШЕ ЗБЕРЕЖЕННЯ (Створення користувача та профілю)
+            _logger.LogInformation("[AuthService] Зберігаємо базові дані користувача...");
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("[AuthService] Користувача створено. Отримано UserID: {UserID}", user.UserID);
+
+            // 4. Додавання жанрів та мов
+            if (dto.FavoriteGenreIds != null && dto.FavoriteGenreIds.Any())
+            {
+                _logger.LogInformation("[AuthService] Додаємо {Count} вибраних жанрів...", dto.FavoriteGenreIds.Count);
+                user.UserProfile.ProfileGenres = dto.FavoriteGenreIds
+                    .Select(id => new ProfileGenre 
+                    { 
+                        UserID = user.UserID, 
+                        GenreID = id 
+                    }).ToList();
+            }
+
+            if (dto.PreferredLanguageIds != null && dto.PreferredLanguageIds.Any())
+            {
+                _logger.LogInformation("[AuthService] Додаємо {Count} вибраних мов...", dto.PreferredLanguageIds.Count);
+                user.UserProfile.ProfileLanguages = dto.PreferredLanguageIds
+                    .Select(id => new ProfileLanguage 
+                    { 
+                        UserID = user.UserID, 
+                        LanguageID = id 
+                    }).ToList();
+            }
+
+            // 5. ДРУГЕ ЗБЕРЕЖЕННЯ (Вподобання)
+            if (user.UserProfile.ProfileGenres?.Any() == true || user.UserProfile.ProfileLanguages?.Any() == true)
+            {
+                _logger.LogInformation("[AuthService] Зберігаємо вподобання профілю...");
+                await _context.SaveChangesAsync();
+            }
+
+            _logger.LogInformation("[AuthService] Реєстрація користувача {Email} завершена успішно.", dto.Email);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[AuthService] КРИТИЧНА ПОМИЛКА під час реєстрації {Email}: {Message}", dto.Email, ex.Message);
+            throw; // Прокидаємо помилку далі до контролера
+        }
+    }
+
+    public async Task<LoginResponseDto> LoginAsync(UserLoginDto dto)
+    {
+        _logger.LogInformation("[AuthService] Спроба входу для email: {Email}", dto.Email);
+
+        var user = await _context.Users
+            .Include(u => u.UserProfile)
+            .FirstOrDefaultAsync(u => u.Email == dto.Email);
+
+        if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
+        {
+            _logger.LogWarning("[AuthService] Невдала спроба входу для {Email}: невірні облікові дані.", dto.Email);
+            return null;
+        }
+
+        _logger.LogInformation("[AuthService] Успішна аутентифікація для {Email}. Генеруємо токен...", dto.Email);
+
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var secretKey = _config["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key is missing in configuration.");
+        var key = Encoding.UTF8.GetBytes(secretKey);
+
+        var tokenDescriptor = new SecurityTokenDescriptor
+        {
+            Subject = new ClaimsIdentity(new[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.UserID.ToString()),
+                new Claim(ClaimTypes.Email, user.Email)
+            }),
+            Expires = DateTime.UtcNow.AddDays(7),
+            Issuer = _config["Jwt:Issuer"],
+            Audience = _config["Jwt:Audience"],
+            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+        };
+
+        var token = tokenHandler.CreateToken(tokenDescriptor);
+        _logger.LogInformation("[AuthService] Токен для {Email} успішно згенерований.", dto.Email);
+
+        return new LoginResponseDto
+        {
+            Token = tokenHandler.WriteToken(token),
+            Priorities = user.UserProfile?.ContentPriorities ?? new List<string> { "Films", "Series", "Games", "Books" }
+        };
+    }
+}

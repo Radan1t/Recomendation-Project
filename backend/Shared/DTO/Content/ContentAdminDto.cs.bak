@@ -1,0 +1,17 @@
+namespace Shared.DTO.Content
+{
+    // DTO для виводу списку в таблицю
+    public class ContentAdminListDto
+    {
+        public int Id { get; set; } // В БД це ContentID
+        public string Title { get; set; }
+        public string Type { get; set; } // Game, Film, Series, Book
+    }
+
+    // DTO для оновлення (поки базові поля з таблиці Contents)
+    public class ContentUpdateDto
+    {
+        public string Title { get; set; }
+        public string Description { get; set; }
+    }
+}

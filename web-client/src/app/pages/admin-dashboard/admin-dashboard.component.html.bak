@@ -1,0 +1,186 @@
+<div class="admin-page">
+  <header class="admin-header">
+    <h1>Панель керування <span class="gold-text">Платформою</span></h1>
+    <div class="header-status">Доступ: Адміністратор</div>
+  </header>
+
+  <div class="hub-grid" *ngIf="currentView === 'hub'">
+    <div class="hub-card glass-card" (click)="setView('games')">
+      <div class="card-title">Ігри</div>
+      <div class="card-actions"><span>Керування та імпорт (RAWG)</span></div>
+      <div class="card-bg-icon">🎮</div>
+    </div>
+
+    <div class="hub-card glass-card" (click)="setView('movies')">
+      <div class="card-title">Фільми</div>
+      <div class="card-actions"><span>Керування та імпорт (TMDB)</span></div>
+      <div class="card-bg-icon">🎬</div>
+    </div>
+
+    <div class="hub-card glass-card" (click)="setView('series')">
+      <div class="card-title">Серіали</div>
+      <div class="card-actions"><span>Керування та імпорт (TMDB)</span></div>
+      <div class="card-bg-icon">📺</div>
+    </div>
+
+    <div class="hub-card glass-card" (click)="setView('books')">
+      <div class="card-title">Книги</div>
+      <div class="card-actions"><span>Керування та імпорт (Google)</span></div>
+      <div class="card-bg-icon">📚</div>
+    </div>
+
+    <div class="hub-card glass-card highlight-card" routerLink="/analytics">
+      <div class="card-title">Статистика</div>
+      <div class="card-actions"><span>Графіки та аналітика платформи</span></div>
+      <div class="card-bg-icon">📊</div>
+    </div>
+  </div>
+
+  <div class="detail-view" *ngIf="currentView !== 'hub'">
+    <button class="back-btn" (click)="setView('hub')">← Повернутися до меню</button>
+
+    <div class="detail-content glass-card">
+      <h2 *ngIf="currentView === 'games'">Керування: Ігри</h2>
+      <h2 *ngIf="currentView === 'movies'">Керування: Фільми</h2>
+      <h2 *ngIf="currentView === 'series'">Керування: Серіали</h2>
+      <h2 *ngIf="currentView === 'books'">Керування: Книги</h2>
+
+      <div class="import-panel">
+        <h3>Автоматичний імпорт</h3>
+        
+        <div class="tool-group">
+          <ng-container [ngSwitch]="currentView">
+            <input *ngSwitchCase="'games'" type="number" [(ngModel)]="gamePage" min="1" placeholder="Стор.">
+            <input *ngSwitchCase="'movies'" type="number" [(ngModel)]="moviePage" min="1" placeholder="Стор.">
+            <input *ngSwitchCase="'series'" type="number" [(ngModel)]="seriesPage" min="1" placeholder="Стор.">
+            
+            <ng-container *ngSwitchCase="'books'">
+              <input type="text" [(ngModel)]="bookSubject" placeholder="Жанр (напр. fiction)">
+              <input type="number" [(ngModel)]="bookStartIndex" min="0" placeholder="Стартовий індекс (напр. 0)">
+            </ng-container>
+          </ng-container>
+
+          <button class="action-btn" (click)="onImportGames()" *ngIf="currentView === 'games'" [disabled]="loading">Завантажити Ігри</button>
+          <button class="action-btn" (click)="onImportMovies()" *ngIf="currentView === 'movies'" [disabled]="loading">Завантажити Фільми</button>
+          <button class="action-btn" (click)="onImportSeries()" *ngIf="currentView === 'series'" [disabled]="loading">Завантажити Серіали</button>
+          <button class="action-btn" (click)="onImportBooks()" *ngIf="currentView === 'books'" [disabled]="loading">Завантажити Книги</button>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <div class="crud-panel">
+        
+        <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+          <h3>База даних ({{ filteredData.length }} / {{ allTableData.length }} записів)</h3>
+          
+          <div class="search-box" style="flex-grow: 1; max-width: 400px; margin: 0 15px;">
+            <input 
+              type="text" 
+              [(ngModel)]="searchQuery" 
+              (input)="onSearch()" 
+              placeholder="🔍 Пошук за назвою..." 
+              style="width: 100%; padding: 8px 15px; border-radius: 20px; border: 1px solid rgba(255, 215, 0, 0.3); background: rgba(0, 0, 0, 0.5); color: white;">
+          </div>
+
+          <button class="add-btn" (click)="onAddManual()">+ Додати новий запис</button>
+        </div>
+        
+        <div class="pagination-controls" *ngIf="!isTableLoading && filteredData.length > pageSize" style="margin-bottom: 20px;">
+          <button class="page-btn" (click)="prevPage()" [disabled]="currentPage === 1">← Попередня</button>
+          <span class="page-info">Сторінка <strong>{{ currentPage }}</strong> з {{ totalPages }}</span>
+          <button class="page-btn" (click)="nextPage()" [disabled]="currentPage === totalPages">Наступна →</button>
+        </div>
+
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th style="width: 5%">ID</th>
+              <th style="width: 25%">Назва контенту</th>
+              
+              <ng-container *ngIf="currentView === 'games'">
+                <th>Розробник</th>
+                <th>Видавець</th>
+              </ng-container>
+              
+              <ng-container *ngIf="currentView === 'movies'">
+                <th>Режисер</th>
+                <th>Тривалість</th>
+              </ng-container>
+              
+              <ng-container *ngIf="currentView === 'series'">
+                <th>Сезони</th>
+                <th>Статус</th>
+              </ng-container>
+              
+              <ng-container *ngIf="currentView === 'books'">
+                <th>Автор</th>
+                <th>Сторінок</th>
+              </ng-container>
+
+              <th style="width: 10%">Рейтинг</th>
+              <th style="width: 10%">Дата виходу</th>
+              <th style="width: 20%; text-align: right;">Дії</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+            <tr *ngIf="isTableLoading">
+              <td colspan="7" class="empty-state">
+                <span style="color: #f1c40f;">⏳ Завантаження даних з бази...</span>
+              </td>
+            </tr>
+
+            <tr *ngIf="!isTableLoading && filteredData.length === 0">
+              <td colspan="7" class="empty-state">
+                <i class="icon-database"></i><br>
+                Нічого не знайдено.
+              </td>
+            </tr>
+
+            <ng-container *ngIf="!isTableLoading">
+              <tr *ngFor="let item of currentTableData">
+                <td>#{{ item.id || item.Id }}</td>
+                <td class="content-title"><strong>{{ item.title || item.Title }}</strong></td>
+                
+                <ng-container *ngIf="currentView === 'games'">
+                  <td>{{ item.developer || item.Developer || '-' }}</td>
+                  <td>{{ item.publisher || item.Publisher || '-' }}</td>
+                </ng-container>
+                
+                <ng-container *ngIf="currentView === 'movies'">
+                  <td>{{ item.director || item.Director || '-' }}</td>
+                  <td>{{ item.durationMinutes || item.DurationMinutes || 0 }} хв</td>
+                </ng-container>
+                
+                <ng-container *ngIf="currentView === 'series'">
+                  <td>{{ item.seasonCount || item.SeasonCount || 0 }}</td>
+                  <td>{{ item.status || item.Status || '-' }}</td>
+                </ng-container>
+                
+                <ng-container *ngIf="currentView === 'books'">
+                  <td>{{ item.author || item.Author || '-' }}</td>
+                  <td>{{ item.pages || item.Pages || 0 }}</td>
+                </ng-container>
+
+                <td>⭐ {{ (item.averageRating || item.AverageRating || 0) | number:'1.1-1' }}</td>
+                <td>{{ (item.releaseDate || item.ReleaseDate) | date:'dd.MM.yyyy' }}</td>
+
+                <td class="row-actions">
+                  <button class="edit-icon" (click)="onEditItem(item)">✎ Ред.</button>
+                  <button class="delete-icon" (click)="onDeleteItem(item)">🗑 Видалити</button>
+                </td>
+              </tr>
+            </ng-container>
+          </tbody>
+        </table>
+
+        <div class="pagination-controls" *ngIf="!isTableLoading && filteredData.length > pageSize" style="margin-top: 20px;">
+          <button class="page-btn" (click)="prevPage()" [disabled]="currentPage === 1">← Попередня</button>
+          <span class="page-info">Сторінка <strong>{{ currentPage }}</strong> з {{ totalPages }}</span>
+          <button class="page-btn" (click)="nextPage()" [disabled]="currentPage === totalPages">Наступна →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

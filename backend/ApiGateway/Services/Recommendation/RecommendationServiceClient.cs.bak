@@ -1,0 +1,51 @@
+using ApiGateway.Config;
+using Microsoft.Extensions.Options;
+using Shared.DTO.Recommendation;
+using System.Net.Http.Json;
+
+namespace ApiGateway.Services.Recommendation;
+
+public class RecommendationServiceClient : IRecommendationServiceClient
+{
+    private readonly HttpClient _http;
+    private readonly ServiceUrls _urls;
+
+    public RecommendationServiceClient(HttpClient http, IOptions<ServiceUrls> urls)
+    {
+        _http = http;
+        _urls = urls.Value;
+    }
+
+    // НОВИЙ МЕТОД: Отримання схожого контенту (викликається сторінкою деталей)
+    public async Task<List<RecommendedItemDto>> GetSimilarAsync(int contentId)
+    {
+        // Стукаємо в Python: GET /api/v1/recommendations/{id}
+        var response = await _http.GetAsync($"{_urls.RecommendationService}/api/v1/recommendations/{contentId}");
+        
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<List<RecommendedItemDto>>() 
+               ?? new List<RecommendedItemDto>();
+    }
+
+    // НОВИЙ МЕТОД: Запуск генерації гібридних рекомендацій
+    public async Task<object> GenerateAsync(int userId)
+    {
+        // Стукаємо в Python: POST /api/v1/recommendations/generate/{user_id}
+        var response = await _http.PostAsync($"{_urls.RecommendationService}/api/v1/recommendations/generate/{userId}", null);
+
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<object>();
+    }
+
+    // Старий метод (залишаємо для сумісності)
+    public async Task<List<RecommendedItemDto>> GetAsync(RecommendationRequestDto dto)
+    {
+        var response = await _http.PostAsJsonAsync($"{_urls.RecommendationService}/recommend", dto);
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<List<RecommendedItemDto>>() 
+               ?? new List<RecommendedItemDto>();
+    }
+}

@@ -1,0 +1,244 @@
+﻿using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
+using System.Text;
+
+namespace ApiGateway.Controllers
+{
+    [ApiController]
+    [Route("api/v1/content")]
+    public class ContentGatewayController : ControllerBase
+    {
+        private readonly HttpClient _httpClient;
+        private readonly IConfiguration _configuration;
+        private readonly ILogger<ContentGatewayController> _logger;
+
+        public ContentGatewayController(HttpClient httpClient, IConfiguration configuration, ILogger<ContentGatewayController> logger)
+        {
+            _httpClient = httpClient;
+            _configuration = configuration;
+            _logger = logger;
+        }
+
+        private string GetContentServiceUrl()
+        {
+            var url = _configuration["ServiceUrls:ContentService"];
+            _logger.LogInformation($"[Gateway] Зчитаний базовий URL ContentService: '{url}'");
+            return url;
+        }
+
+        [HttpGet("random-posters")]
+        public async Task<IActionResult> GetRandomPosters([FromQuery] int count = 20)
+        {
+            _logger.LogInformation("[Gateway] Отримано запит на random-posters");
+            var contentUrl = GetContentServiceUrl();
+            
+            if (string.IsNullOrEmpty(contentUrl))
+            {
+                _logger.LogError("[Gateway] КРИТИЧНО: URL для ContentService порожній!");
+                return StatusCode(500, "URL для ContentService не знайдено.");
+            }
+
+            var targetUrl = $"{contentUrl}/api/v1/content/random-posters?count={count}";
+            _logger.LogInformation($"[Gateway] Робимо запит до: {targetUrl}");
+
+            try
+            {
+                var response = await _httpClient.GetAsync(targetUrl);
+                var data = await response.Content.ReadAsStringAsync();
+
+                _logger.LogInformation($"[Gateway] Статус відповіді від ContentService: {response.StatusCode}");
+
+                if (response.IsSuccessStatusCode) return Content(data, "application/json");
+
+                _logger.LogError($"[Gateway] Помилка від ContentService. Тіло: {data}");
+                return StatusCode((int)response.StatusCode, $"Помилка від бекенду: {data}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"[Gateway] Помилка HTTP з'єднання: {ex.Message}");
+                return StatusCode(500, new { message = "Помилка з'єднання", details = ex.Message, inner = ex.InnerException?.Message });
+            }
+        }
+
+        [HttpGet("genres")]
+        public async Task<IActionResult> GetGenres()
+        {
+            _logger.LogInformation("[Gateway] Отримано запит на genres");
+            var targetUrl = $"{GetContentServiceUrl()}/api/v1/content/genres";
+            
+            try
+            {
+                _logger.LogInformation($"[Gateway] Робимо запит до: {targetUrl}");
+                var response = await _httpClient.GetAsync(targetUrl);
+                var data = await response.Content.ReadAsStringAsync();
+
+                if (response.IsSuccessStatusCode) return Content(data, "application/json");
+                
+                _logger.LogError($"[Gateway] Помилка від ContentService (genres): {data}");
+                return StatusCode((int)response.StatusCode, data);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[Gateway] Помилка HTTP з'єднання (genres)");
+                return StatusCode(500, new { message = "Помилка з'єднання", details = ex.Message });
+            }
+        }
+
+        [HttpGet("languages")]
+        public async Task<IActionResult> GetLanguages()
+        {
+            _logger.LogInformation("[Gateway] Отримано запит на languages");
+            var targetUrl = $"{GetContentServiceUrl()}/api/v1/content/languages";
+            
+            try
+            {
+                _logger.LogInformation($"[Gateway] Робимо запит до: {targetUrl}");
+                var response = await _httpClient.GetAsync(targetUrl);
+                var data = await response.Content.ReadAsStringAsync();
+
+                if (response.IsSuccessStatusCode) return Content(data, "application/json");
+                
+                _logger.LogError($"[Gateway] Помилка від ContentService (languages): {data}");
+                return StatusCode((int)response.StatusCode, data);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[Gateway] Помилка HTTP з'єднання (languages)");
+                return StatusCode(500, new { message = "Помилка з'єднання", details = ex.Message });
+            }
+        }
+        
+        [HttpGet("details")]
+        public async Task<IActionResult> GetContentDetails([FromQuery] int[] ids)
+        {
+             var queryString = string.Join("&", ids.Select(id => $"ids={id}"));
+             var targetUrl = $"{GetContentServiceUrl()}/api/v1/content/details?{queryString}";
+             _logger.LogInformation($"[Gateway] Робимо запит до: {targetUrl}");
+             
+             try {
+                 var response = await _httpClient.GetAsync(targetUrl);
+                 var data = await response.Content.ReadAsStringAsync();
+                 if (response.IsSuccessStatusCode) return Content(data, "application/json");
+                 return StatusCode((int)response.StatusCode, data);
+             } catch(Exception ex) {
+                 _logger.LogError(ex, "[Gateway] Помилка HTTP з'єднання (details)");
+                 return StatusCode(500, new { message = ex.Message });
+             }
+        }
+
+        
+        
+        
+        [HttpGet("search")]
+        public async Task<IActionResult> SearchGlobalContent([FromQuery] string q)
+        {
+            _logger.LogInformation($"[Gateway] Отримано запит на пошук. Текст: '{q}'");
+            var contentUrl = GetContentServiceUrl();
+            
+            if (string.IsNullOrEmpty(contentUrl))
+            {
+                return StatusCode(500, "URL для ContentService не знайдено.");
+            }
+
+            var targetUrl = $"{contentUrl}/api/v1/content/search?q={Uri.EscapeDataString(q ?? "")}";
+            _logger.LogInformation($"[Gateway] Робимо запит до: {targetUrl}");
+
+            try
+            {
+                var response = await _httpClient.GetAsync(targetUrl);
+                var data = await response.Content.ReadAsStringAsync();
+
+                if (response.IsSuccessStatusCode) return Content(data, "application/json");
+
+                _logger.LogError($"[Gateway] Помилка від ContentService (search): {data}");
+                return StatusCode((int)response.StatusCode, data);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[Gateway] Помилка HTTP з'єднання (search)");
+                return StatusCode(500, new { message = "Помилка з'єднання", details = ex.Message });
+            }
+        }
+
+        
+
+        [HttpGet("{id:int}")]
+        public async Task<IActionResult> GetSingleContentDetails(int id)
+        {
+            _logger.LogInformation($"[Gateway] Отримано запит на деталі контенту з ID: {id}");
+            var contentUrl = GetContentServiceUrl();
+            
+            if (string.IsNullOrEmpty(contentUrl))
+            {
+                _logger.LogError("[Gateway] КРИТИЧНО: URL для ContentService порожній!");
+                return StatusCode(500, "URL для ContentService не знайдено.");
+            }
+
+            var targetUrl = $"{contentUrl}/api/v1/content/{id}";
+            _logger.LogInformation($"[Gateway] Робимо запит до: {targetUrl}");
+
+            try
+            {
+                var response = await _httpClient.GetAsync(targetUrl);
+                var data = await response.Content.ReadAsStringAsync();
+
+                _logger.LogInformation($"[Gateway] Статус відповіді від ContentService (ID {id}): {response.StatusCode}");
+
+                if (response.IsSuccessStatusCode) 
+                {
+                    return Content(data, "application/json");
+                }
+
+                _logger.LogError($"[Gateway] Помилка від ContentService. Тіло: {data}");
+                return StatusCode((int)response.StatusCode, data);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"[Gateway] Помилка HTTP з'єднання при отриманні ID {id}: {ex.Message}");
+                return StatusCode(500, new { message = "Помилка з'єднання", details = ex.Message });
+            }
+        }
+
+        
+
+        [HttpGet("admin/list")]
+        public async Task<IActionResult> GetAdminList([FromQuery] string type)
+        {
+            var contentUrl = GetContentServiceUrl();
+            if (string.IsNullOrEmpty(contentUrl)) return StatusCode(500, "URL для ContentService не знайдено.");
+
+            var response = await _httpClient.GetAsync($"{contentUrl}/api/v1/content/admin/list?type={type}");
+            var content = await response.Content.ReadAsStringAsync();
+            
+            if (response.IsSuccessStatusCode) return Content(content, "application/json");
+            return StatusCode((int)response.StatusCode, content);
+        }
+
+        [HttpDelete("admin/{id:int}")] 
+        public async Task<IActionResult> DeleteContent(int id)
+        {
+            var contentUrl = GetContentServiceUrl();
+            if (string.IsNullOrEmpty(contentUrl)) return StatusCode(500, "URL для ContentService не знайдено.");
+
+            var response = await _httpClient.DeleteAsync($"{contentUrl}/api/v1/content/admin/{id}");
+            var content = await response.Content.ReadAsStringAsync();
+            
+            if (response.IsSuccessStatusCode) return Content(content, "application/json");
+            return StatusCode((int)response.StatusCode, content);
+        }
+
+        [HttpPut("admin/{id:int}")] 
+        public async Task<IActionResult> UpdateContent(int id, [FromBody] object updateDto)
+        {
+            var contentUrl = GetContentServiceUrl();
+            if (string.IsNullOrEmpty(contentUrl)) return StatusCode(500, "URL для ContentService не знайдено.");
+
+            var jsonContent = new StringContent(JsonSerializer.Serialize(updateDto), Encoding.UTF8, "application/json");
+            var response = await _httpClient.PutAsync($"{contentUrl}/api/v1/content/admin/{id}", jsonContent);
+            var content = await response.Content.ReadAsStringAsync();
+            
+            if (response.IsSuccessStatusCode) return Content(content, "application/json");
+            return StatusCode((int)response.StatusCode, content);
+        }
+    }
+}

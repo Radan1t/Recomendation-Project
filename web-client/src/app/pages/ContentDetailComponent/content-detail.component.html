@@ -1,0 +1,96 @@
+﻿<div class="page-container">
+  <header class="top-nav">
+    <div class="nav-left">
+      <div class="logo" routerLink="/home" style="cursor: pointer;">✺</div>
+      <button class="dropbtn" routerLink="/home">Головна</button>
+    </div>
+    <div class="nav-center">
+      <div class="search-bar"><input type="text" placeholder="Пошук..."></div>
+    </div>
+    <div class="nav-right">
+      <button class="dropbtn">Профіль</button>
+      <div class="avatar" (click)="logout()"></div>
+    </div>
+  </header>
+
+  @if (content) {
+    <main class="content-wrapper">
+      
+      <section class="hero-section">
+        <div class="poster-container">
+          <img [src]="content.posterUrl" [alt]="content.title" class="main-poster" (error)="onImageError($event)">
+        </div>
+        
+        <div class="info-container">
+          <div class="title-row">
+            <h1 class="title-italic">{{ content.title }}</h1>
+            <button class="btn-favorite" (click)="toggleFavorite()" [class.active]="isFavorite" title="Додати в улюблене">
+              <span class="heart-icon">{{ isFavorite ? '❤️' : '🤍' }}</span>
+            </button>
+          </div>
+
+          <p class="description"><strong>Опис:</strong> {{ content.description }}</p>
+          
+          <div class="metadata">
+            <p *ngIf="content.developer"><strong>Розробник:</strong> <span class="underline">{{ content.developer }}</span></p>
+            <p *ngIf="content.publisher"><strong>Видавець:</strong> <span class="underline">{{ content.publisher }}</span></p>
+            <p *ngIf="content.director"><strong>Режисер:</strong> <span class="underline">{{ content.director }}</span></p>
+            <p *ngIf="content.author"><strong>Автор:</strong> <span class="underline">{{ content.author }}</span></p>
+            
+            <p *ngIf="content.pages"><strong>Сторінок:</strong> <span>{{ content.pages }}</span></p>
+            <p *ngIf="content.durationMinutes"><strong>Тривалість:</strong> <span>{{ content.durationMinutes }} хв</span></p>
+            <p *ngIf="content.seasonCount"><strong>Кількість сезонів:</strong> <span>{{ content.seasonCount }}</span></p>
+            <p *ngIf="content.status"><strong>Статус:</strong> <span>{{ content.status }}</span></p>
+
+            <p><strong>Жанри:</strong> <span class="underline">{{ content.genres }}</span></p>
+            <p><strong>Дата виходу:</strong> {{ content.releaseDate }}</p>
+            <p *ngIf="content.pegi && content.pegi !== '0+'"><strong>Рейтинг:</strong> {{ content.pegi }}</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="middle-section" style="justify-content: center;">
+        <div class="rating-block" style="margin: 0 auto; min-width: 400px;">
+          <h2 class="title-italic text-center">Рейтинг</h2>
+
+          <div class="rating-item site-rating" style="justify-content: center; margin-bottom: 20px;">
+            <span class="rating-label">Оцінка користувачів платформи:</span>
+            <span class="rating-value" style="font-size: 1.5em; margin-left: 10px;">
+              {{ content.siteAverageRating | number:'1.1-1' }} / 5.0
+            </span>
+          </div>
+
+          <div class="user-rate-action" style="text-align: center;">
+            <p>Ваша оцінка:</p>
+            <div class="stars" style="justify-content: center;">
+              @for (star of [1, 2, 3, 4, 5]; track star) {
+                <span class="star" 
+                      [class.active]="star <= (hoveredStar || content.userRating || 0)"
+                      (mouseenter)="hoveredStar = star"
+                      (mouseleave)="hoveredStar = 0"
+                      (click)="rateContent(star)">
+                  ★
+                </span>
+              }
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="similar-section" *ngIf="content.similarContent.length">
+        <h2 class="title-italic">Схожий контент</h2>
+        <div class="row-container">
+          @for (item of content.similarContent; track item.id) {
+            <div class="card" style="cursor: pointer;" [routerLink]="['/content', item.id]">
+              <img [src]="item.posterUrl || item.imageUrl" [alt]="item.title" class="poster" (error)="onImageError($event)">
+              <div class="card-info">
+                <p class="title" [title]="item.title">{{item.title}}</p>
+              </div>
+            </div>
+          }
+        </div>
+      </section>
+
+    </main>
+  }
+</div>

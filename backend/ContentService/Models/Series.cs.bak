@@ -1,0 +1,10 @@
+namespace ContentService.Entities
+{
+    public class Series : Content
+    {
+        public int SeasonCount { get; set; }
+        public int EpisodesCount { get; set; }
+        public string Status { get; set; }
+        public string Network { get; set; }
+    }
+}

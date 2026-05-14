@@ -1,0 +1,21 @@
+﻿using System;
+using System.Collections.Generic;
+
+namespace ContentService.Entities
+{
+    public abstract class Content
+    {
+        public int ContentID { get; set; }
+        public string Title { get; set; }
+        public string Description { get; set; }
+        public DateTime ReleaseDate { get; set; }
+        public double AverageRating { get; set; }
+        public string PosterURL { get; set; }
+        public string ExternalID { get; set; }
+        public string ExternalSource { get; set; }
+
+        public ICollection<ContentGenre> ContentGenres { get; set; } = new List<ContentGenre>();
+        public ICollection<ContentLanguage> ContentLanguages { get; set; } = new List<ContentLanguage>();
+        public ICollection<ContentTag> ContentTags { get; set; } = new List<ContentTag>();
+    }
+}

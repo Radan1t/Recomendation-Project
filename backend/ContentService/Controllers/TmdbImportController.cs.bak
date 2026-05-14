@@ -1,0 +1,48 @@
+﻿using Microsoft.AspNetCore.Mvc;
+using System.Threading.Tasks;
+using ContentService.Services;
+using System;
+
+namespace ContentService.Controllers
+{
+    [ApiController]
+    [Route("api/v1/[controller]")]
+    public class TmdbImportController : ControllerBase
+    {
+        private readonly TmdbIntegrationService _tmdbIntegrationService;
+
+        public TmdbImportController(TmdbIntegrationService tmdbIntegrationService)
+        {
+            _tmdbIntegrationService = tmdbIntegrationService;
+        }
+
+        [HttpPost("import-movies")]
+        public async Task<IActionResult> ImportMovies([FromQuery] int page = 1)
+        {
+            try
+            {
+                await _tmdbIntegrationService.ImportMoviesAsync(page);
+                return Ok(new { message = $"Фільми зі сторінки {page} успішно імпортовано." });
+            }
+            catch (Exception ex)
+            {
+                // Завжди корисно повертати текст помилки, якщо щось пішло не так
+                return StatusCode(500, new { message = "Помилка при імпорті фільмів", details = ex.Message });
+            }
+        }
+
+        [HttpPost("import-series")]
+        public async Task<IActionResult> ImportSeries([FromQuery] int page = 1)
+        {
+            try
+            {
+                await _tmdbIntegrationService.ImportSeriesAsync(page);
+                return Ok(new { message = $"Серіали зі сторінки {page} успішно імпортовано." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Помилка при імпорті серіалів", details = ex.Message });
+            }
+        }
+    }
+}

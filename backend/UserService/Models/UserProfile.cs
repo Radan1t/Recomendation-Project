@@ -1,20 +1,18 @@
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System;
+using System.Collections.Generic;
 
-namespace UserService.Models
+namespace UserService.Entities
 {
     public class UserProfile
     {
-        [Key]
-        public int ProfileId { get; set; }
-
-        [ForeignKey("User")]
-        public Guid UserId { get; set; }
-
-        public string PreferredGenres { get; set; }     // JSON або рядок через кому
-        public string PreferredLanguages { get; set; }
+        public int UserID { get; set; }
+        public DateTime DateOfBirth { get; set; }
         public string Country { get; set; }
-
+        public List<string> ContentPriorities { get; set; }
         public User User { get; set; }
+
+        public ICollection<ProfileGenre> ProfileGenres { get; set; } = new List<ProfileGenre>();
+        public ICollection<ProfileLanguage> ProfileLanguages { get; set; } = new List<ProfileLanguage>();
+        public ICollection<ProfileTag> ProfileTags { get; set; } = new List<ProfileTag>();
     }
 }

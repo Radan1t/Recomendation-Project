@@ -1,0 +1,124 @@
+﻿using ContentService.Models.TMDB;
+using Shared.DTO.Content;
+using Microsoft.Extensions.Configuration;
+using System;
+using System.Linq;
+using System.Net.Http;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+namespace ContentService.Services
+{
+    public class TmdbIntegrationService
+    {
+        private readonly HttpClient _httpClient;
+        private readonly FilmImportService _filmImportService;
+        private readonly SeriesImportService _seriesImportService;
+        private readonly string _apiKey;
+        private const string ImageBaseUrl = "https://image.tmdb.org/t/p/w500";
+
+        public TmdbIntegrationService(HttpClient httpClient, IConfiguration config, FilmImportService filmService, SeriesImportService seriesService)
+        {
+            _httpClient = httpClient;
+            _httpClient.BaseAddress = new Uri(config["TmdbApi:BaseUrl"]);
+            _apiKey = config["TmdbApi:ApiKey"];
+            _filmImportService = filmService;
+            _seriesImportService = seriesService;
+        }
+
+        public async Task ImportMoviesAsync(int page = 1)
+        {
+            var listResponse = await _httpClient.GetAsync($"movie/popular?api_key={_apiKey}&page={page}");
+            if (!listResponse.IsSuccessStatusCode) return;
+
+            var listData = JsonSerializer.Deserialize<TmdbPagedResponse<TmdbItem>>(await listResponse.Content.ReadAsStringAsync());
+
+            foreach (var item in listData.Results)
+            {
+                try
+                {
+                    // Додали ,keywords у запит
+                    var detailResponse = await _httpClient.GetAsync($"movie/{item.Id}?api_key={_apiKey}&append_to_response=credits,keywords");
+                    if (!detailResponse.IsSuccessStatusCode) continue;
+
+                    var details = JsonSerializer.Deserialize<TmdbMovieDetails>(await detailResponse.Content.ReadAsStringAsync());
+                    var director = details.Credits?.Crew?.FirstOrDefault(c => c.Job == "Director")?.Name ?? "Unknown";
+                    DateTime.TryParse(details.ReleaseDate, out DateTime releaseDate);
+
+                    var dto = new FilmImportDto
+                    {
+                        ExternalID = details.Id.ToString(),
+                        Title = details.Title,
+                        Description = string.IsNullOrWhiteSpace(details.Overview) ? "Опис відсутній" : details.Overview,
+                        ReleaseDate = releaseDate,
+                        AverageRating = details.VoteAverage, // Вже 10-бальна
+                        PosterURL = details.PosterPath != null ? ImageBaseUrl + details.PosterPath : string.Empty,
+                        Director = director,
+                        DurationMinutes = details.Runtime ?? 0,
+                        BoxOffice = details.Revenue ?? 0,
+
+                        Genres = details.Genres?.Select(g => g.Name).ToList() ?? new System.Collections.Generic.List<string>(),
+                        // Додано Теги
+                        Tags = details.KeywordsData?.Keywords?.Select(k => k.Name).ToList() ?? new System.Collections.Generic.List<string>(),
+                        // Додано Мову
+                        Languages = string.IsNullOrEmpty(details.OriginalLanguage) ? new System.Collections.Generic.List<string>() : new System.Collections.Generic.List<string> { details.OriginalLanguage }
+                    };
+
+                    await _filmImportService.ImportFilmAsync(dto);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Помилка імпорту фільму {item.Id}: {ex.Message}");
+                }
+            }
+        }
+
+        public async Task ImportSeriesAsync(int page = 1)
+        {
+            var listResponse = await _httpClient.GetAsync($"tv/popular?api_key={_apiKey}&page={page}");
+            if (!listResponse.IsSuccessStatusCode) return;
+
+            var listData = JsonSerializer.Deserialize<TmdbPagedResponse<TmdbItem>>(await listResponse.Content.ReadAsStringAsync());
+
+            foreach (var item in listData.Results)
+            {
+                try
+                {
+                    // Додали ,keywords у запит
+                    var detailResponse = await _httpClient.GetAsync($"tv/{item.Id}?api_key={_apiKey}&append_to_response=keywords");
+                    if (!detailResponse.IsSuccessStatusCode) continue;
+
+                    var details = JsonSerializer.Deserialize<TmdbSeriesDetails>(await detailResponse.Content.ReadAsStringAsync());
+                    DateTime.TryParse(details.FirstAirDate, out DateTime releaseDate);
+                    var network = details.Networks?.FirstOrDefault()?.Name ?? "Unknown Network";
+
+                    var dto = new SeriesImportDto
+                    {
+                        ExternalID = details.Id.ToString(),
+                        Title = details.Name,
+                        Description = string.IsNullOrWhiteSpace(details.Overview) ? "Опис відсутній" : details.Overview,
+                        ReleaseDate = releaseDate,
+                        AverageRating = details.VoteAverage, // Вже 10-бальна
+                        PosterURL = details.PosterPath != null ? ImageBaseUrl + details.PosterPath : string.Empty,
+                        SeasonCount = details.NumberOfSeasons ?? 1,
+                        EpisodesCount = details.NumberOfEpisodes ?? 1,
+                        Status = details.Status ?? "Unknown",
+                        Network = network,
+
+                        Genres = details.Genres?.Select(g => g.Name).ToList() ?? new System.Collections.Generic.List<string>(),
+                        // Додано Теги
+                        Tags = details.KeywordsData?.Results?.Select(k => k.Name).ToList() ?? new System.Collections.Generic.List<string>(),
+                        // Додано Мову
+                        Languages = string.IsNullOrEmpty(details.OriginalLanguage) ? new System.Collections.Generic.List<string>() : new System.Collections.Generic.List<string> { details.OriginalLanguage }
+                    };
+
+                    await _seriesImportService.ImportSeriesAsync(dto);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Помилка імпорту серіалу {item.Id}: {ex.Message}");
+                }
+            }
+        }
+    }
+}

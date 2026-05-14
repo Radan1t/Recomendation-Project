@@ -1,4 +1,4 @@
-namespace Shared.DTO.Auth;
+﻿namespace Shared.DTO.Auth;
 public class RegisterRequestDto
 {
     public string Email { get; set; }

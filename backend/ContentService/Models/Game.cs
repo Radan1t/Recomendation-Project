@@ -1,13 +1,9 @@
-using System.ComponentModel.DataAnnotations.Schema;
-
-namespace ContentService.Models
+﻿namespace ContentService.Entities
 {
-    [Table("Games")]
-    public class Game : ContentItem
+    public class Game : Content
     {
         public string Developer { get; set; }
-        public string Platform { get; set; }
+        public string Publisher { get; set; }
         public string PEGIRating { get; set; }
-        public bool MultiplayerSupport { get; set; }
     }
 }
