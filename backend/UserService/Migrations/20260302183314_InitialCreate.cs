@@ -1,0 +1,226 @@
+﻿using System;
+using Microsoft.EntityFrameworkCore.Migrations;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+
+#nullable disable
+
+namespace UserService.Migrations
+{
+    
+    public partial class InitialCreate : Migration
+    {
+        
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.CreateTable(
+                name: "Genres",
+                columns: table => new
+                {
+                    GenreID = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Name = table.Column<string>(type: "text", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Genres", x => x.GenreID);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Languages",
+                columns: table => new
+                {
+                    LanguageID = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Code = table.Column<string>(type: "text", nullable: false),
+                    Name = table.Column<string>(type: "text", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Languages", x => x.LanguageID);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Tags",
+                columns: table => new
+                {
+                    TagID = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Name = table.Column<string>(type: "text", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Tags", x => x.TagID);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Users",
+                columns: table => new
+                {
+                    UserID = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    Surname = table.Column<string>(type: "text", nullable: false),
+                    Email = table.Column<string>(type: "text", nullable: false),
+                    PasswordHash = table.Column<string>(type: "text", nullable: false),
+                    RegistrationDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Users", x => x.UserID);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "UserProfiles",
+                columns: table => new
+                {
+                    UserID = table.Column<int>(type: "integer", nullable: false),
+                    DateOfBirth = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Country = table.Column<string>(type: "text", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserProfiles", x => x.UserID);
+                    table.ForeignKey(
+                        name: "FK_UserProfiles_Users_UserID",
+                        column: x => x.UserID,
+                        principalTable: "Users",
+                        principalColumn: "UserID",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ProfileGenres",
+                columns: table => new
+                {
+                    UserID = table.Column<int>(type: "integer", nullable: false),
+                    GenreID = table.Column<int>(type: "integer", nullable: false),
+                    UserProfileUserID = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ProfileGenres", x => new { x.UserID, x.GenreID });
+                    table.ForeignKey(
+                        name: "FK_ProfileGenres_Genres_GenreID",
+                        column: x => x.GenreID,
+                        principalTable: "Genres",
+                        principalColumn: "GenreID",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ProfileGenres_UserProfiles_UserProfileUserID",
+                        column: x => x.UserProfileUserID,
+                        principalTable: "UserProfiles",
+                        principalColumn: "UserID",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ProfileLanguages",
+                columns: table => new
+                {
+                    UserID = table.Column<int>(type: "integer", nullable: false),
+                    LanguageID = table.Column<int>(type: "integer", nullable: false),
+                    UserProfileUserID = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ProfileLanguages", x => new { x.UserID, x.LanguageID });
+                    table.ForeignKey(
+                        name: "FK_ProfileLanguages_Languages_LanguageID",
+                        column: x => x.LanguageID,
+                        principalTable: "Languages",
+                        principalColumn: "LanguageID",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ProfileLanguages_UserProfiles_UserProfileUserID",
+                        column: x => x.UserProfileUserID,
+                        principalTable: "UserProfiles",
+                        principalColumn: "UserID",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ProfileTags",
+                columns: table => new
+                {
+                    UserID = table.Column<int>(type: "integer", nullable: false),
+                    TagID = table.Column<int>(type: "integer", nullable: false),
+                    UserProfileUserID = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ProfileTags", x => new { x.UserID, x.TagID });
+                    table.ForeignKey(
+                        name: "FK_ProfileTags_Tags_TagID",
+                        column: x => x.TagID,
+                        principalTable: "Tags",
+                        principalColumn: "TagID",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ProfileTags_UserProfiles_UserProfileUserID",
+                        column: x => x.UserProfileUserID,
+                        principalTable: "UserProfiles",
+                        principalColumn: "UserID",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ProfileGenres_GenreID",
+                table: "ProfileGenres",
+                column: "GenreID");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ProfileGenres_UserProfileUserID",
+                table: "ProfileGenres",
+                column: "UserProfileUserID");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ProfileLanguages_LanguageID",
+                table: "ProfileLanguages",
+                column: "LanguageID");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ProfileLanguages_UserProfileUserID",
+                table: "ProfileLanguages",
+                column: "UserProfileUserID");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ProfileTags_TagID",
+                table: "ProfileTags",
+                column: "TagID");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ProfileTags_UserProfileUserID",
+                table: "ProfileTags",
+                column: "UserProfileUserID");
+        }
+
+        
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DropTable(
+                name: "ProfileGenres");
+
+            migrationBuilder.DropTable(
+                name: "ProfileLanguages");
+
+            migrationBuilder.DropTable(
+                name: "ProfileTags");
+
+            migrationBuilder.DropTable(
+                name: "Genres");
+
+            migrationBuilder.DropTable(
+                name: "Languages");
+
+            migrationBuilder.DropTable(
+                name: "Tags");
+
+            migrationBuilder.DropTable(
+                name: "UserProfiles");
+
+            migrationBuilder.DropTable(
+                name: "Users");
+        }
+    }
+}
+

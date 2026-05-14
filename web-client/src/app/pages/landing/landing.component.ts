@@ -1,0 +1,200 @@
+﻿import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, AbstractControl, ValidationErrors, ValidatorFn } from '@angular/forms';
+import { ContentService, Genre, Language } from '../../core/services/content.service';
+import { AuthService } from '../../core/services/auth.service';
+import { Router } from '@angular/router';
+
+
+export const passwordMatchValidator: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
+  const password = control.get('password');
+  const confirmPassword = control.get('confirmPassword');
+
+  if (password && confirmPassword && password.value !== confirmPassword.value) {
+    confirmPassword.setErrors({ passwordMismatch: true });
+    return { passwordMismatch: true };
+  }
+  
+  if (confirmPassword?.hasError('passwordMismatch')) {
+    confirmPassword.setErrors(null);
+  }
+  return null;
+};
+
+@Component({
+  selector: 'app-landing',
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule],
+  templateUrl: './landing.component.html',
+  styleUrls: ['./landing.component.scss']
+})
+export class LandingComponent implements OnInit {
+  private router = inject(Router);
+  displayPosters: string[] = [];
+  showLoginModal = false;
+  showRegisterModal = false;
+  registrationStep = 1;
+
+  contentTypes = ['Books', 'Films', 'Series', 'Games']; 
+  selectedPriorities: string[] = [];
+
+  
+  availableGenres: Genre[] = [];
+  selectedGenres: number[] = []; 
+
+  availableLanguages: Language[] = [];
+  selectedLanguages: number[] = []; 
+
+  loginForm: FormGroup;
+  registerForm: FormGroup;
+
+  private contentService = inject(ContentService);
+  private authService = inject(AuthService);
+  private cdr = inject(ChangeDetectorRef);
+  private fb = inject(FormBuilder);
+
+  constructor() {
+    this.loginForm = this.fb.group({
+      email: ['', [Validators.required, Validators.email]],
+      password: ['', [Validators.required, Validators.minLength(6)]]
+    });
+
+    this.registerForm = this.fb.group({
+      name: ['', Validators.required],
+      surname: ['', Validators.required],
+      email: ['', [Validators.required, Validators.email]],
+      password: ['', [Validators.required, Validators.minLength(6)]],
+      confirmPassword: ['', Validators.required], 
+      dateOfBirth: ['', Validators.required],
+      country: ['', Validators.required]
+    }, { validators: passwordMatchValidator }); 
+  }
+
+  ngOnInit(): void {
+    this.contentService.getRandomPosters(20).subscribe({
+      next: (urls) => {
+        if (urls && urls.length > 0) {
+          this.displayPosters = [...urls, ...urls];
+          this.cdr.detectChanges();
+        }
+      },
+      error: (err) => console.error('Помилка завантаження контенту:', err)
+    });
+
+    this.contentService.getGenres().subscribe({
+      next: (genres) => this.availableGenres = genres,
+      error: (err) => console.error('Помилка завантаження жанрів:', err)
+    });
+
+    this.contentService.getLanguages().subscribe({
+      next: (langs) => this.availableLanguages = langs,
+      error: (err) => console.error('Помилка завантаження мов:', err)
+    });
+  }
+
+  onImageError(event: Event) {
+    const imgElement = event.target as HTMLImageElement;
+    imgElement.src = 'https://placehold.co/320x480/1a1a1a/ffffff?text=No+Image';
+  }
+
+  openLogin() {
+    this.showLoginModal = true;
+    this.showRegisterModal = false;
+  }
+
+  openRegister() {
+    this.showRegisterModal = true;
+    this.showLoginModal = false;
+    this.registrationStep = 1;
+  }
+
+  closeModals() {
+    this.showLoginModal = false;
+    this.showRegisterModal = false;
+    this.loginForm.reset();
+    this.registerForm.reset({ country: '' });
+    this.selectedPriorities = [];
+    this.selectedGenres = [];
+    this.selectedLanguages = [];
+    this.registrationStep = 1;
+  }
+
+  nextStep() {
+    if (this.registrationStep === 1 && this.registerForm.invalid) {
+      this.registerForm.markAllAsTouched();
+      return;
+    }
+    this.registrationStep++;
+  }
+
+  prevStep() {
+    if (this.registrationStep > 1) this.registrationStep--;
+  }
+
+  togglePriority(type: string) {
+    const index = this.selectedPriorities.indexOf(type);
+    if (index > -1) this.selectedPriorities.splice(index, 1);
+    else this.selectedPriorities.push(type);
+  }
+
+  toggleGenre(id: number) {
+    const index = this.selectedGenres.indexOf(id);
+    if (index > -1) this.selectedGenres.splice(index, 1);
+    else this.selectedGenres.push(id);
+  }
+
+  toggleLanguage(id: number) {
+    const index = this.selectedLanguages.indexOf(id);
+    if (index > -1) this.selectedLanguages.splice(index, 1);
+    else this.selectedLanguages.push(id);
+  }
+
+  onLoginSubmit() {
+    if (this.loginForm.valid) {
+      this.authService.login(this.loginForm.value).subscribe({
+        next: (res) => {
+          console.log('Успішний логін:', res);
+          localStorage.setItem('token', res.token); 
+          localStorage.setItem('priorities', JSON.stringify(res.priorities)); 
+          
+          this.closeModals();
+          this.router.navigate(['/home']); 
+        },
+        error: (err) => alert(err.error?.message || 'Помилка входу')
+      });
+    } else {
+      this.loginForm.markAllAsTouched();
+    }
+  }
+
+  onRegisterSubmit() {
+    const formValue = this.registerForm.value;
+
+    const payload = {
+      name: formValue.name,
+      surname: formValue.surname,
+      email: formValue.email,
+      password: formValue.password,
+      dateOfBirth: formValue.dateOfBirth,
+      country: formValue.country,
+      contentPriorities: this.selectedPriorities, 
+      favoriteGenreIds: this.selectedGenres,      
+      preferredLanguageIds: this.selectedLanguages
+    };
+    
+    console.log('Відправляємо дані на бекенд:', payload);
+
+    this.authService.register(payload).subscribe({
+      next: (response) => {
+        console.log('Відповідь сервера:', response);
+        alert('Реєстрація успішна! Тепер ти можеш увійти.');
+        this.closeModals();
+      },
+      error: (err) => {
+        console.error('Помилка реєстрації:', err);
+        const errorMessage = err.error?.message || 'Сталася невідома помилка під час реєстрації.';
+        alert(errorMessage);
+      }
+    });
+  }
+}

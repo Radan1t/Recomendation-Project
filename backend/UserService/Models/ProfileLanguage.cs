@@ -1,0 +1,10 @@
+﻿namespace UserService.Entities
+{
+    public class ProfileLanguage
+    {
+        public int UserID { get; set; }
+        public UserProfile UserProfile { get; set; }
+        public int LanguageID { get; set; }
+        public Language Language { get; set; }
+    }
+}

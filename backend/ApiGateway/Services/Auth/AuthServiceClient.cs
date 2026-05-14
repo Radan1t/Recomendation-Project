@@ -1,4 +1,4 @@
-using ApiGateway.Config;
+﻿using ApiGateway.Config;
 using Microsoft.Extensions.Options;
 using Shared.DTO.Auth;
 
@@ -33,3 +33,4 @@ public class AuthServiceClient : IAuthServiceClient
         response.EnsureSuccessStatusCode();
     }
 }
+

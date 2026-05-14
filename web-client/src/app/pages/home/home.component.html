@@ -1,0 +1,83 @@
+﻿<div class="home-container">
+  <header class="top-nav">
+    <div class="nav-left">
+      <div class="logo">✺</div>
+      <div class="dropdown">
+        <button class="dropbtn">Browse <span class="arrow">▼</span></button>
+        <div class="dropdown-content">
+          <a (click)="navigateTo('all')">Explore all</a>
+          <a (click)="navigateTo('games')">Games</a>
+          <a (click)="navigateTo('films')">Films</a>
+          <a (click)="navigateTo('series')">Series</a>
+          <a (click)="navigateTo('books')">Books</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-center">
+      <div class="search-container">
+        <div class="search-bar">
+          <input 
+            type="text" 
+            placeholder="Search for content..." 
+            [(ngModel)]="searchQuery"
+            (input)="onSearchInput()"
+            (blur)="closeSearchDropdown()">
+        </div>
+
+        @if (isSearchDropdownOpen && searchResults.length > 0) {
+          <div class="search-dropdown">
+            @for (result of searchResults; track result.id || result.ContentID) {
+              <div class="search-result-item" (click)="goToSearchResult(result)">
+                <img 
+                  [src]="result.posterUrl || result.PosterUrl" 
+                  alt="poster" 
+                  class="search-thumb" 
+                  (error)="onSearchImageError($event)">
+                <div class="search-item-info">
+                  <p class="search-title">{{ result.title || result.Title }}</p>
+                  <p class="search-meta">
+                    {{ result.contentType || result.ContentType || 'Media' }} 
+                    @if (result.releaseDate || result.ReleaseDate) {
+                      • {{ (result.releaseDate || result.ReleaseDate) | date:'yyyy' }}
+                    }
+                  </p>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="nav-right">
+      <button class="btn-logout" (click)="logout()">Logout</button>
+      <div class="avatar"></div>
+    </div>
+  </header>
+
+  <main class="content-area">
+    @for (section of displaySections; track section.title) {
+      @if (section.items && section.items.length > 0) {
+        <section class="content-section">
+          <h2 class="section-title">{{ section.title }}</h2>
+          <div class="row-container">
+            
+            @for (item of section.items; track item.id) {
+              <div class="card">
+                <img [src]="item.imageUrl" [alt]="item.title" class="poster" (error)="onImageError($event)">
+                <div class="card-info">
+                  <p class="title" [title]="item.title">Title: {{item.title}}</p>
+                  <p class="meta">Category: {{item.category}}</p>
+                  <p class="meta">Rating: {{item.rating}}</p>
+                  <button class="btn-check" (click)="goToContent(item.id)">Check</button>
+                </div>
+              </div>
+            }
+
+          </div>
+        </section>
+      }
+    }
+  </main>
+</div>

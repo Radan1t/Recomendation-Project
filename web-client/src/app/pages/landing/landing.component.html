@@ -1,0 +1,208 @@
+﻿<div class="landing-page">
+  
+  <div class="content-wrapper">
+    <div class="text-section">
+      <h1 class="title">
+        Your personal guide to<br>
+        <span class="highlight">the world of entertainment</span>
+      </h1>
+      <p class="subtitle">
+        Discover great stories — from cinematic masterpieces to iconic games.<br>
+        Log in or create your account and get new recommendations every day.
+      </p>
+      <div class="actions">
+        <button class="btn btn-primary" (click)="openLogin()">Log In</button>
+        <button class="btn btn-outline" (click)="openRegister()">Registration</button>
+      </div>
+    </div>
+  </div>
+
+  
+  <div class="marquee-container">
+    <div class="posters-track">
+      @if (displayPosters.length > 0) {
+        @for (url of displayPosters; track $index) {
+          <div class="poster-card">
+            <img [src]="url" alt="Poster" (error)="onImageError($event)">
+          </div>
+        }
+      } @else {
+        @for (i of [1,2,3,4,5,6]; track i) {
+          <div class="poster-card placeholder"></div>
+        }
+      }
+    </div>
+  </div>
+
+  
+  
+  
+  @if (showLoginModal) {
+    <div class="modal-backdrop" (click)="closeModals()">
+      <div class="modal-box" (click)="$event.stopPropagation()">
+        <button class="close-btn" (click)="closeModals()">×</button>
+        <h2>Welcome Back</h2>
+        <p>Log in to access your recommendations</p>
+
+        <form [formGroup]="loginForm" (ngSubmit)="onLoginSubmit()">
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" formControlName="email" placeholder="Enter your email">
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" formControlName="password" placeholder="Enter your password">
+          </div>
+          <button type="submit" class="btn btn-submit w-100 mt-20">Log In</button>
+        </form>
+        <div class="modal-footer">
+          Don't have an account? <a (click)="openRegister()">Sign up</a>
+        </div>
+      </div>
+    </div>
+  }
+
+  
+  
+  
+  @if (showRegisterModal) {
+    <div class="modal-backdrop" (click)="closeModals()">
+      <div class="modal-box modal-lg" (click)="$event.stopPropagation()">
+        <button class="close-btn" (click)="closeModals()">×</button>
+        
+        
+        <div class="step-indicator">
+          <span [class.active]="registrationStep >= 1">1. Profile</span>
+          <div class="line" [class.active]="registrationStep >= 2"></div>
+          <span [class.active]="registrationStep >= 2">2. Priorities</span>
+          <div class="line" [class.active]="registrationStep >= 3"></div>
+          <span [class.active]="registrationStep >= 3">3. Tastes</span>
+        </div>
+
+        <form [formGroup]="registerForm">
+          
+          
+          @if (registrationStep === 1) {
+            <h2>Create Account</h2>
+            <p>Let's start with your basic information.</p>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label>Name</label>
+                <input type="text" formControlName="name" placeholder="First name">
+              </div>
+              <div class="form-group">
+                <label>Surname</label>
+                <input type="text" formControlName="surname" placeholder="Last name">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" formControlName="email" placeholder="Email address">
+            </div>
+
+            <div class="form-group">
+              <label>Password</label>
+              <input type="password" formControlName="password" placeholder="Create a password">
+            </div>
+
+            <div class="form-group">
+              <label>Confirm Password</label>
+              <input type="password" formControlName="confirmPassword" placeholder="Repeat your password">
+              
+              <span class="error-message" *ngIf="registerForm.get('confirmPassword')?.touched && registerForm.get('confirmPassword')?.hasError('required')">
+                Please confirm your password.
+              </span>
+              <span class="error-message" *ngIf="registerForm.get('confirmPassword')?.touched && registerForm.get('confirmPassword')?.hasError('passwordMismatch')">
+                Passwords do not match!
+              </span>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Date of Birth</label>
+                <input type="date" formControlName="dateOfBirth">
+              </div>
+              <div class="form-group">
+                <label>Country</label>
+                <input type="text" formControlName="country" placeholder="Select your country">
+              </div>
+            </div>
+            <button type="button" class="btn btn-submit w-100 mt-20" (click)="nextStep()">Continue</button>
+            <div class="modal-footer">
+              Already have an account? <a (click)="openLogin()">Log in</a>
+            </div>
+          }
+
+          
+          @if (registrationStep === 2) {
+            <h2>What excites you the most?</h2>
+            <p>Select in order of your preference (1st is your favorite).</p>
+            
+            <div class="priority-list">
+              @for (type of contentTypes; track type) {
+                <div class="priority-item" 
+                     [class.selected]="selectedPriorities.includes(type)"
+                     (click)="togglePriority(type)">
+                  <span class="type-name">{{type}}</span>
+                  @if (selectedPriorities.includes(type)) {
+                    <span class="rank-badge">{{ selectedPriorities.indexOf(type) + 1 }}</span>
+                  } @else {
+                    <span class="add-icon">+</span>
+                  }
+                </div>
+              }
+            </div>
+
+            <div class="modal-actions">
+              <button type="button" class="btn btn-outline" (click)="prevStep()">Back</button>
+              <button type="button" class="btn btn-submit" 
+                      [disabled]="selectedPriorities.length === 0" 
+                      (click)="nextStep()">Next Step</button>
+            </div>
+          }
+
+          
+          @if (registrationStep === 3) {
+            <h2>Personalize your feed</h2>
+            <p>Select your favorite genres and preferred languages.</p>
+            
+            <div class="tastes-section">
+              <label>Favorite Genres</label>
+              <div class="chip-group">
+                @for (genre of availableGenres; track $index) {
+                  
+                  <button type="button" 
+                          class="chip"
+                          [class.active]="selectedGenres.includes(genre.GenreID)"
+                          (click)="toggleGenre(genre.GenreID)">
+                    {{ genre.Name }}
+                  </button>
+                }
+              </div>
+
+              <label class="mt-20">Content Languages</label>
+              <div class="chip-group">
+                @for (lang of availableLanguages; track $index) {
+                  
+                  <button type="button"
+                          class="chip"
+                          [class.active]="selectedLanguages.includes(lang.LanguageID)"
+                          (click)="toggleLanguage(lang.LanguageID)">
+                    {{ lang.Name }}
+                  </button>
+                }
+              </div>
+            </div>
+
+            <div class="modal-actions">
+              <button type="button" class="btn btn-outline" (click)="prevStep()">Back</button>
+              <button type="button" class="btn btn-submit" (click)="onRegisterSubmit()">Complete Registration</button>
+            </div>
+          }
+        </form>
+      </div>
+    </div>
+  }
+</div>

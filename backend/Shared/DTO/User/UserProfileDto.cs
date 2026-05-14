@@ -1,4 +1,4 @@
-public class UserProfileDto
+﻿public class UserProfileDto
 {
     public int UserId { get; set; }
     public List<string> PreferredGaners { get; set; }

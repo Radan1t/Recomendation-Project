@@ -1,4 +1,4 @@
-using ApiGateway.Services.Recommendation;
+﻿using ApiGateway.Services.Recommendation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Shared.DTO.Recommendation;
@@ -7,7 +7,8 @@ namespace ApiGateway.Controllers;
 
 [Authorize]
 [ApiController]
-[Route("api/recommendations")]
+
+[Route("api/v1/recommendations")] 
 public class RecommendationController : ControllerBase
 {
     private readonly IRecommendationServiceClient _recs;
@@ -17,10 +18,19 @@ public class RecommendationController : ControllerBase
         _recs = recs;
     }
 
-    [HttpPost]
-    public async Task<ActionResult<List<RecommendedItemDto>>> Get(
-        RecommendationRequestDto dto)
+    
+    [HttpPost("generate/{userId}")]
+    public async Task<ActionResult> Generate(int userId)
     {
-        return Ok(await _recs.GetAsync(dto));
+        return Ok(await _recs.GenerateAsync(userId));
+    }
+
+    
+    [HttpGet("{id}")]
+    public async Task<ActionResult<List<RecommendedItemDto>>> GetSimilar(int id)
+    {
+        
+        var results = await _recs.GetSimilarAsync(id);
+        return Ok(results);
     }
 }

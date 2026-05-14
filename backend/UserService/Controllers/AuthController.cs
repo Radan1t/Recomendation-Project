@@ -1,0 +1,38 @@
+﻿using Microsoft.AspNetCore.Mvc;
+using Shared.DTO.User;
+using UserService.Services;
+
+namespace UserService.Controllers;
+
+[ApiController]
+[Route("api/v1/auth")] 
+public class AuthController : ControllerBase
+{
+    private readonly IAuthService _authService;
+
+    public AuthController(IAuthService authService)
+    {
+        _authService = authService;
+    }
+
+    [HttpPost("register")]
+    public async Task<IActionResult> Register([FromBody] UserRegistrationDto dto)
+    {
+        var success = await _authService.RegisterUserAsync(dto);
+        
+        if (!success)
+        {
+            return BadRequest(new { message = "Користувач з таким Email вже існує" });
+        }
+
+        return Ok(new { message = "Реєстрація успішна!" });
+    }
+    [HttpPost("login")]
+    public async Task<IActionResult> Login([FromBody] UserLoginDto dto)
+    {
+        var response = await _authService.LoginAsync(dto);
+        if (response == null) return Unauthorized(new { message = "Невірний email або пароль" });
+
+        return Ok(response); 
+    }
+}

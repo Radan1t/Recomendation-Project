@@ -1,0 +1,45 @@
+﻿using System.Threading.Tasks;
+using ContentService.Entities;
+
+namespace ContentService.Repositories
+{
+    public interface IGameRepository
+    {
+        Task<bool> ExistsAsync(string externalId, string externalSource);
+        Task AddAsync(Game game);
+    }
+    public interface IGenreRepository
+    {
+        Task<Genre> GetByNameAsync(string name);
+        Task AddAsync(Genre genre);
+    }
+    public interface ITagRepository
+    {
+        Task<Tag> GetByNameAsync(string name);
+        Task AddAsync(Tag tag);
+    }
+    public interface IUnitOfWork
+    {
+        Task SaveChangesAsync();
+    }
+    public interface IFilmRepository
+    {
+        Task<bool> ExistsAsync(string externalId, string externalSource);
+        Task AddAsync(Film film);
+    }
+    public interface ISeriesRepository
+    {
+        Task<bool> ExistsAsync(string externalId, string externalSource);
+        Task AddAsync(Series series);
+    }
+    public interface IBookRepository
+    {
+        Task<bool> ExistsAsync(string externalId, string externalSource);
+        Task AddAsync(Book book);
+    }
+    public interface ILanguageRepository
+    {
+        Task<Language> GetByCodeAsync(string code);
+        Task AddAsync(Language language);
+    }
+}

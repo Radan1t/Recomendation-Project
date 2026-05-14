@@ -1,4 +1,4 @@
-namespace ApiGateway.Config;
+﻿namespace ApiGateway.Config;
 
 public class ServiceUrls
 {
@@ -8,3 +8,4 @@ public class ServiceUrls
     public string InteractionService { get; set; }
     public string RecommendationService { get; set; }
 }
+

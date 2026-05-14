@@ -1,4 +1,4 @@
-namespace Shared.DTO.Auth;
+﻿namespace Shared.DTO.Auth;
 public class AuthResponseDto
 {
     public string Token { get; set; }

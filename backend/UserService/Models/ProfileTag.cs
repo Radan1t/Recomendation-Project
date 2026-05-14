@@ -1,0 +1,10 @@
+﻿namespace UserService.Entities
+{
+    public class ProfileTag
+    {
+        public int UserID { get; set; }
+        public UserProfile UserProfile { get; set; }
+        public int TagID { get; set; }
+        public Tag Tag { get; set; }
+    }
+}
