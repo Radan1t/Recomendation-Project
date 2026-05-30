@@ -1,9 +1,6 @@
 ﻿version: '3.8'
 
 services:
-
-
-
   postgres:
     image: postgres:15-alpine
     container_name: platform-postgres
@@ -16,8 +13,6 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - platform-network
-
-
 
   pgadmin:
     image: dpage/pgadmin4
@@ -32,8 +27,6 @@ services:
     networks:
       - platform-network
 
-
-
   redis:
     image: redis:alpine
     container_name: platform-redis
@@ -41,9 +34,6 @@ services:
       - "6379:6379"
     networks:
       - platform-network
-
-
-
 
   auth-service:
     build:
@@ -87,9 +77,7 @@ services:
       - ConnectionStrings__DefaultConnection=${CONTENT_DB_CONNECTION}
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
-
       - UserService__BaseUrl=http://user-service:8080
-
       - RawgApi__BaseUrl=https://api.rawg.io/api/
       - RawgApi__ApiKey=${RAWG_API_KEY}
       - TmdbApi__BaseUrl=https://api.themoviedb.org/3/
@@ -112,7 +100,6 @@ services:
       - ConnectionStrings__DefaultConnection=${INTERACT_DB_CONNECTION}
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
-      
     ports:
       - "5004:8080"
     depends_on:
@@ -158,10 +145,21 @@ services:
     networks:
       - platform-network
 
+  frontend:
+    build:
+      context: ../web-client   
+      dockerfile: Dockerfile    
+    container_name: platform-frontend
+    ports:
+      - "4200:80"               
+    depends_on:
+      - api-gateway            
+    networks:
+      - platform-network
+
 volumes:
   postgres_data:
 
 networks:
   platform-network:
     driver: bridge
-
