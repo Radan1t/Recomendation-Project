@@ -1,77 +1,257 @@
-﻿.analytics-page {
-  background: #0d0d0d; 
+﻿/* =========================================
+   ЗМІННІ
+   ========================================= */
+$accent-gold: #ffd700;
+$glass-border: rgba(255, 255, 255, 0.1);
+$card-bg: rgba(30, 30, 30, 0.6);
+
+.analytics-page {
+  background: radial-gradient(circle at top left, #1a1a1a, #0d0d0d);
   min-height: 100vh;
-  padding: 40px;
+  padding: 40px 60px;
   position: relative;
-  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
   color: #fff;
 }
 
+/* =========================================
+   ХЕДЕР АНАЛІТИКИ
+   ========================================= */
 .admin-header {
   margin-bottom: 50px;
   text-transform: uppercase;
-  letter-spacing: 2px;
+  letter-spacing: 1px;
+  border-bottom: 1px solid $glass-border;
+  padding-bottom: 20px;
   
   h1 {
-    font-size: 1.8rem;
-    font-weight: 800;
+    margin: 0;
+    font-size: 2.2rem;
+    font-weight: 900;
     color: #fff;
-    .v-line { color: #f1c40f; margin: 0 15px; }
-    small { color: #888; font-weight: 300; }
+    
+    .v-line { 
+      color: $accent-gold; 
+      margin: 0 15px; 
+      font-weight: 300;
+    }
+    
+    small { 
+      color: #888; 
+      font-weight: 400; 
+      font-size: 1.2rem;
+      letter-spacing: normal;
+      text-transform: none;
+    }
   }
 }
 
+/* =========================================
+   ДАШБОРД (СІТКА ГРАФІКІВ)
+   ========================================= */
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-  gap: 30px;
+  gap: 40px;
 }
 
 .glass-card {
-  background: rgba(30, 30, 30, 0.6); 
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 4px; 
-  padding: 30px;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+  background: $card-bg; 
+  border: 1px solid $glass-border;
+  border-radius: 16px; 
+  padding: 35px;
+  backdrop-filter: blur(15px);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+  transition: all 0.3s ease;
 
   &:hover {
-    border-color: rgba(241, 196, 15, 0.3); 
+    border-color: rgba(255, 215, 0, 0.3); 
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
   }
 
   .card-header {
-    margin-bottom: 25px;
-    border-left: 4px solid #f1c40f;
+    margin-bottom: 30px;
+    border-left: 4px solid $accent-gold;
     padding-left: 15px;
     
     h3 {
       margin: 0;
       text-transform: uppercase;
-      font-size: 1.1rem;
+      font-size: 1.2rem;
+      font-weight: 800;
       letter-spacing: 1px;
+      color: #eee;
     }
   }
 }
 
+/* =========================================
+   ГРАФІКИ ТА ЗАВАНТАЖЕННЯ
+   ========================================= */
 .chart-container {
   position: relative;
   height: 400px;
   width: 100%;
-}
-
-.loader {
-  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #f1c40f;
+}
+
+.loader {
+  color: $accent-gold;
   font-family: 'Courier New', Courier, monospace;
+  font-size: 16px;
+  font-weight: bold;
   text-transform: uppercase;
+  letter-spacing: 2px;
   animation: blink 1.5s infinite;
 }
 
 @keyframes blink {
-  0% { opacity: 0.2; }
+  0% { opacity: 0.3; }
   50% { opacity: 1; }
-  100% { opacity: 0.2; }
+  100% { opacity: 0.3; }
+}
+/* =========================================
+   ХЕДЕР (Top Navigation) - Скляний стиль
+   ========================================= */
+.top-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 50px;
+  background-color: rgba(15, 15, 15, 0.95);
+  backdrop-filter: blur(15px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  margin: -40px -60px 40px -60px; /* Важливо для адмінки, щоб хедер прилипав до країв сторінки */
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+
+  .nav-left {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+
+    .logo { 
+      font-size: 32px; 
+      font-weight: 900;
+      color: white;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      &:hover { color: #ffd700; transform: rotate(15deg); }
+    }
+
+    .dropdown {
+      position: relative;
+      display: inline-block;
+
+      .dropbtn {
+        background-color: transparent;
+        color: #ddd;
+        font-size: 16px;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        padding: 10px 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: color 0.2s;
+        .arrow { font-size: 10px; transition: transform 0.3s ease; }
+        &:hover { color: white; }
+      }
+
+      .dropdown-content {
+        display: block;
+        position: absolute;
+        top: 120%;
+        left: 0;
+        background-color: rgba(10, 10, 10, 0.95);
+        min-width: 180px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        box-shadow: 0px 10px 25px rgba(0,0,0,0.7);
+        padding: 10px 0;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-10px);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+        a {
+          color: #ccc;
+          padding: 12px 20px;
+          text-decoration: none;
+          display: block;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+          &:hover {
+            background-color: rgba(255, 255, 255, 0.08);
+            color: #ffd700;
+            padding-left: 25px;
+          }
+        }
+      }
+
+      &:hover .dropdown-content { 
+        opacity: 1; visibility: visible; transform: translateY(0); 
+      }
+      &:hover .arrow { transform: rotate(180deg); }
+    }
+  }
+
+  .nav-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+
+    .btn-logout {
+      background: transparent;
+      color: #ccc;
+      border: 1px solid transparent;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      &:hover { color: white; background: rgba(255, 75, 43, 0.1); border-color: rgba(255, 75, 43, 0.3); }
+    }
+
+    .avatar {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, #444, #222);
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid rgba(255,255,255,0.2);
+      transition: all 0.3s;
+      &:hover { border-color: #ffd700; transform: scale(1.05); box-shadow: 0 0 10px rgba(255,215,0,0.3); }
+    }
+  }
+
+}
+  /* =========================================
+   КНОПКА ПОВЕРНЕННЯ
+   ========================================= */
+.back-btn {
+  background: rgba(255, 255, 255, 0.05); 
+  color: #ccc; 
+  border: 1px solid rgba(255, 255, 255, 0.1); 
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer; 
+  margin-bottom: 10px; 
+  padding: 8px 16px;
+  border-radius: 8px;
+  transition: all 0.2s;
+  
+  &:hover { 
+    color: #fff; 
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateX(-5px); // Анімація зсуву вліво
+  }
 }

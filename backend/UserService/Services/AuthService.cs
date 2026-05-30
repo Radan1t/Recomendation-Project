@@ -71,19 +71,9 @@ public class AuthService : IAuthService
                     }).ToList();
             }
 
-            if (dto.PreferredLanguageIds != null && dto.PreferredLanguageIds.Any())
-            {
-                _logger.LogInformation("[AuthService] Додаємо {Count} вибраних мов...", dto.PreferredLanguageIds.Count);
-                user.UserProfile.ProfileLanguages = dto.PreferredLanguageIds
-                    .Select(id => new ProfileLanguage 
-                    { 
-                        UserID = user.UserID, 
-                        LanguageID = id 
-                    }).ToList();
-            }
 
             
-            if (user.UserProfile.ProfileGenres?.Any() == true || user.UserProfile.ProfileLanguages?.Any() == true)
+            if (user.UserProfile.ProfileGenres?.Any() == true)
             {
                 _logger.LogInformation("[AuthService] Зберігаємо вподобання профілю...");
                 await _context.SaveChangesAsync();

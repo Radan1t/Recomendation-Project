@@ -11,7 +11,7 @@ recommender = HybridRecommender()
 async def generate_recommendations(user_id: int):
     try:
 
-        recs = recommender.generate_hybrid(user_id, top_n=200)
+        recs = recommender.generate_hybrid(user_id, total_recommendations=100, per_type_min=12)
         
         if not recs:
             raise HTTPException(status_code=404, detail="No content found")

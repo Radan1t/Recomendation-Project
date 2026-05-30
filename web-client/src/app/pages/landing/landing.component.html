@@ -182,18 +182,6 @@
                 }
               </div>
 
-              <label class="mt-20">Content Languages</label>
-              <div class="chip-group">
-                @for (lang of availableLanguages; track $index) {
-                  
-                  <button type="button"
-                          class="chip"
-                          [class.active]="selectedLanguages.includes(lang.LanguageID)"
-                          (click)="toggleLanguage(lang.LanguageID)">
-                    {{ lang.Name }}
-                  </button>
-                }
-              </div>
             </div>
 
             <div class="modal-actions">

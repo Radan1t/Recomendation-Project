@@ -32,16 +32,36 @@ public class ContentService : IContentService
             .ToListAsync();
     }
 
-    public async Task<List<GenreDto>> GetGenresAsync()
+    public async Task<List<GenreDto>> GetGenresAsync(string? contentType = null)
     {
-        return await _context.Genres
-            .Select(g => new GenreDto 
-            { 
-                GenreID = g.GenreID, 
-                Name = g.Name 
-            })
+        if (string.IsNullOrWhiteSpace(contentType))
+        {
+            return await _context.Genres
+                .Select(g => new GenreDto { GenreID = g.GenreID, Name = g.Name })
+                .OrderBy(g => g.Name)
+                .ToListAsync();
+        }
+
+        var type = contentType.ToLower().Trim();
+
+        IQueryable<int> contentIds = null;
+        if (type == "games") contentIds = _context.Games.Select(g => g.ContentID);
+        else if (type == "movies" || type == "films") contentIds = _context.Films.Select(f => f.ContentID);
+        else if (type == "series") contentIds = _context.Series.Select(s => s.ContentID);
+        else if (type == "books") contentIds = _context.Books.Select(b => b.ContentID);
+
+        if (contentIds == null) return new List<GenreDto>();
+
+        var genres = await _context.ContentGenres
+            .Include(cg => cg.Genre)
+            .Where(cg => contentIds.Contains(cg.ContentID))
+            .Select(cg => cg.Genre)
+            .Distinct()
+            .Select(g => new GenreDto { GenreID = g.GenreID, Name = g.Name })
             .OrderBy(g => g.Name)
             .ToListAsync();
+
+        return genres;
     }
 
     public async Task<List<LanguageDto>> GetLanguagesAsync()
@@ -111,27 +131,86 @@ public class ContentService : IContentService
             developer = game.Developer;
             pegi = game.PEGIRating;
         }
-        else 
+
+        var film = await _context.Films.AsNoTracking().FirstOrDefaultAsync(f => f.ContentID == actualInternalId);
+        if (film != null)
         {
-            
-            var book = await _context.Books.AsNoTracking().FirstOrDefaultAsync(b => b.ContentID == actualInternalId);
-            if (book != null) developer = book.Author;
+            // map film-specific fields
+            return new ContentDetailDto
+            {
+                Id = actualInternalId,
+                Title = content.Title,
+                Description = content.Description ?? "Опис відсутній",
+                ContentType = "Film",
+                Director = film.Director,
+                DurationMinutes = film.DurationMinutes,
+                Country = null,
+                Pegi = pegi,
+                Genres = content.ContentGenres != null && content.ContentGenres.Any() ? string.Join(", ", content.ContentGenres.Select(cg => cg.Genre.Name)) : "Не вказано",
+                ReleaseDate = content.ReleaseDate.ToString("dd MMM yyyy"),
+                PosterUrl = content.PosterURL,
+                AverageRating = content.AverageRating,
+                SteamRatingText = content.AverageRating > 0 ? $"Рейтинг: {content.AverageRating:F1}" : "Немає оцінок"
+            };
         }
 
+        var series = await _context.Series.AsNoTracking().FirstOrDefaultAsync(s => s.ContentID == actualInternalId);
+        if (series != null)
+        {
+            return new ContentDetailDto
+            {
+                Id = actualInternalId,
+                Title = content.Title,
+                Description = content.Description ?? "Опис відсутній",
+                ContentType = "Series",
+                Creator = series.Network,
+                SeasonCount = series.SeasonCount,
+                EpisodesCount = series.EpisodesCount,
+                Status = series.Status,
+                Network = series.Network,
+                Genres = content.ContentGenres != null && content.ContentGenres.Any() ? string.Join(", ", content.ContentGenres.Select(cg => cg.Genre.Name)) : "Не вказано",
+                ReleaseDate = content.ReleaseDate.ToString("dd MMM yyyy"),
+                PosterUrl = content.PosterURL,
+                AverageRating = content.AverageRating,
+                SteamRatingText = content.AverageRating > 0 ? $"Рейтинг: {content.AverageRating:F1}" : "Немає оцінок"
+            };
+        }
+
+        var book = await _context.Books.AsNoTracking().FirstOrDefaultAsync(b => b.ContentID == actualInternalId);
+        if (book != null)
+        {
+            developer = book.Author;
+            return new ContentDetailDto
+            {
+                Id = actualInternalId,
+                Title = content.Title,
+                Description = content.Description ?? "Опис відсутній",
+                ContentType = "Book",
+                Author = book.Author,
+                PublisherName = book.Publisher,
+                Pages = book.Pages,
+                ISBN = book.ISBN,
+                Genres = content.ContentGenres != null && content.ContentGenres.Any() ? string.Join(", ", content.ContentGenres.Select(cg => cg.Genre.Name)) : "Не вказано",
+                ReleaseDate = content.ReleaseDate.ToString("dd MMM yyyy"),
+                PosterUrl = content.PosterURL,
+                AverageRating = content.AverageRating,
+                SteamRatingText = content.AverageRating > 0 ? $"Рейтинг: {content.AverageRating:F1}" : "Немає оцінок"
+            };
+        }
+
+        // default / game or fallback
         return new ContentDetailDto
         {
-            Id = actualInternalId, 
+            Id = actualInternalId,
             Title = content.Title,
             Description = content.Description ?? "Опис відсутній",
+            ContentType = game != null ? "Game" : "Unknown",
             Developer = developer,
             Pegi = pegi,
-            
-            Genres = content.ContentGenres != null && content.ContentGenres.Any()
-                ? string.Join(", ", content.ContentGenres.Select(cg => cg.Genre.Name))
-                : "Не вказано",
-
+            Genres = content.ContentGenres != null && content.ContentGenres.Any() ? string.Join(", ", content.ContentGenres.Select(cg => cg.Genre.Name)) : "Не вказано",
             ReleaseDate = content.ReleaseDate.ToString("dd MMM yyyy"),
             PosterUrl = content.PosterURL,
+            AverageRating = content.AverageRating,
             SteamRatingText = content.AverageRating > 0 ? $"Рейтинг: {content.AverageRating:F1}" : "Немає оцінок"
         };
     }
@@ -211,6 +290,96 @@ public class ContentService : IContentService
     }
 
     return new List<object>();
+}
+
+public async Task<Shared.DTO.Content.ContentListResultDto> GetContentListAsync(string contentType, string? q = null, int? genreId = null, int page = 1, int pageSize = 20)
+{
+    if (string.IsNullOrWhiteSpace(contentType)) return new Shared.DTO.Content.ContentListResultDto();
+
+    var type = contentType.ToLower().Trim();
+    q = string.IsNullOrWhiteSpace(q) ? null : q.ToLower().Trim();
+
+    if (type == "all")
+    {
+        var gamesQ = _context.Games.AsNoTracking().AsQueryable();
+        var filmsQ = _context.Films.AsNoTracking().AsQueryable();
+        var seriesQ = _context.Series.AsNoTracking().AsQueryable();
+        var booksQ = _context.Books.AsNoTracking().AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            gamesQ = gamesQ.Where(x => x.Title.ToLower().Contains(q));
+            filmsQ = filmsQ.Where(x => x.Title.ToLower().Contains(q));
+            seriesQ = seriesQ.Where(x => x.Title.ToLower().Contains(q));
+            booksQ = booksQ.Where(x => x.Title.ToLower().Contains(q));
+        }
+
+        if (genreId.HasValue)
+        {
+            gamesQ = gamesQ.Where(g => _context.ContentGenres.Any(cg => cg.ContentID == g.ContentID && cg.GenreID == genreId.Value));
+            filmsQ = filmsQ.Where(f => _context.ContentGenres.Any(cg => cg.ContentID == f.ContentID && cg.GenreID == genreId.Value));
+            seriesQ = seriesQ.Where(s => _context.ContentGenres.Any(cg => cg.ContentID == s.ContentID && cg.GenreID == genreId.Value));
+            booksQ = booksQ.Where(b => _context.ContentGenres.Any(cg => cg.ContentID == b.ContentID && cg.GenreID == genreId.Value));
+        }
+
+        var selectGames = gamesQ.Select(x => new Shared.DTO.Content.ContentListItemDto { Id = x.ContentID, Title = x.Title, PosterUrl = x.PosterURL, AverageRating = x.AverageRating, ContentType = "Games" });
+        var selectFilms = filmsQ.Select(x => new Shared.DTO.Content.ContentListItemDto { Id = x.ContentID, Title = x.Title, PosterUrl = x.PosterURL, AverageRating = x.AverageRating, ContentType = "Films" });
+        var selectSeries = seriesQ.Select(x => new Shared.DTO.Content.ContentListItemDto { Id = x.ContentID, Title = x.Title, PosterUrl = x.PosterURL, AverageRating = x.AverageRating, ContentType = "Series" });
+        var selectBooks = booksQ.Select(x => new Shared.DTO.Content.ContentListItemDto { Id = x.ContentID, Title = x.Title, PosterUrl = x.PosterURL, AverageRating = x.AverageRating, ContentType = "Books" });
+
+        var combined = selectGames.Cast<Shared.DTO.Content.ContentListItemDto>()
+            .Concat(selectFilms)
+            .Concat(selectSeries)
+            .Concat(selectBooks);
+
+        var total = await combined.CountAsync();
+        var items = await combined.OrderBy(x => x.Title).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+
+        return new Shared.DTO.Content.ContentListResultDto { Items = items, Total = total };
+    }
+
+    if (type == "games")
+    {
+        var qg = _context.Games.AsNoTracking().AsQueryable();
+        if (!string.IsNullOrWhiteSpace(q)) qg = qg.Where(x => x.Title.ToLower().Contains(q));
+        if (genreId.HasValue) qg = qg.Where(g => _context.ContentGenres.Any(cg => cg.ContentID == g.ContentID && cg.GenreID == genreId.Value));
+        var projected = qg.Select(x => new Shared.DTO.Content.ContentListItemDto { Id = x.ContentID, Title = x.Title, PosterUrl = x.PosterURL, AverageRating = x.AverageRating, ContentType = "Games" });
+        var totalCount = await projected.CountAsync();
+        var itemsList = await projected.OrderBy(x => x.Title).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+        return new Shared.DTO.Content.ContentListResultDto { Items = itemsList, Total = totalCount };
+    }
+    else if (type == "movies" || type == "films")
+    {
+        var qf = _context.Films.AsNoTracking().AsQueryable();
+        if (!string.IsNullOrWhiteSpace(q)) qf = qf.Where(x => x.Title.ToLower().Contains(q));
+        if (genreId.HasValue) qf = qf.Where(f => _context.ContentGenres.Any(cg => cg.ContentID == f.ContentID && cg.GenreID == genreId.Value));
+        var projected = qf.Select(x => new Shared.DTO.Content.ContentListItemDto { Id = x.ContentID, Title = x.Title, PosterUrl = x.PosterURL, AverageRating = x.AverageRating, ContentType = "Films" });
+        var totalCount = await projected.CountAsync();
+        var itemsList = await projected.OrderBy(x => x.Title).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+        return new Shared.DTO.Content.ContentListResultDto { Items = itemsList, Total = totalCount };
+    }
+    else if (type == "series")
+    {
+        var qs = _context.Series.AsNoTracking().AsQueryable();
+        if (!string.IsNullOrWhiteSpace(q)) qs = qs.Where(x => x.Title.ToLower().Contains(q));
+        if (genreId.HasValue) qs = qs.Where(s => _context.ContentGenres.Any(cg => cg.ContentID == s.ContentID && cg.GenreID == genreId.Value));
+        var projected = qs.Select(x => new Shared.DTO.Content.ContentListItemDto { Id = x.ContentID, Title = x.Title, PosterUrl = x.PosterURL, AverageRating = x.AverageRating, ContentType = "Series" });
+        var totalCount = await projected.CountAsync();
+        var itemsList = await projected.OrderBy(x => x.Title).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+        return new Shared.DTO.Content.ContentListResultDto { Items = itemsList, Total = totalCount };
+    }
+    else if (type == "books")
+    {
+        var qb = _context.Books.AsNoTracking().AsQueryable();
+        if (!string.IsNullOrWhiteSpace(q)) qb = qb.Where(x => x.Title.ToLower().Contains(q));
+        if (genreId.HasValue) qb = qb.Where(b => _context.ContentGenres.Any(cg => cg.ContentID == b.ContentID && cg.GenreID == genreId.Value));
+        var projected = qb.Select(x => new Shared.DTO.Content.ContentListItemDto { Id = x.ContentID, Title = x.Title, PosterUrl = x.PosterURL, AverageRating = x.AverageRating, ContentType = "Books" });
+        var totalCount = await projected.CountAsync();
+        var itemsList = await projected.OrderBy(x => x.Title).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+        return new Shared.DTO.Content.ContentListResultDto { Items = itemsList, Total = totalCount };
+    }
+
+    return new Shared.DTO.Content.ContentListResultDto();
 }
 
     public async Task<bool> DeleteContentAsync(int id)
@@ -300,5 +469,21 @@ public class ContentService : IContentService
             .ToList();
 
         return combinedResults;
+    }
+
+    public async Task<List<GenreDto>> GetBookGenresAsync()
+    {
+        var bookIds = await _context.Books.Select(b => b.ContentID).ToListAsync();
+        
+        var genres = await _context.ContentGenres
+            .Include(cg => cg.Genre)
+            .Where(cg => bookIds.Contains(cg.ContentID))
+            .Select(cg => cg.Genre)
+            .Distinct()
+            .Select(g => new GenreDto { GenreID = g.GenreID, Name = g.Name })
+            .OrderBy(g => g.Name)
+            .ToListAsync();
+
+        return genres;
     }
 }

@@ -76,4 +76,48 @@ public class InteractionServiceImplementation : IInteractionService
             UserScore = rating?.Score
         };
     }
+
+    public async Task<List<UserRatingDto>> GetUserRatingsAsync(int userId)
+    {
+        var ratings = await _context.UserRatings
+            .Where(r => r.UserID == userId)
+            .OrderByDescending(r => r.DateRated)
+            .Select(r => new UserRatingDto
+            {
+                ContentId = r.ContentID,
+                Score = r.Score,
+                DateRated = r.DateRated
+            })
+            .ToListAsync();
+
+        return ratings;
+    }
+
+    public async Task<List<UserFavoriteDto>> GetUserFavoritesAsync(int userId)
+    {
+        var favorites = await _context.UserFavorites
+            .Where(f => f.UserID == userId)
+            .OrderByDescending(f => f.DateAdded)
+            .Select(f => new UserFavoriteDto
+            {
+                ContentId = f.ContentID,
+                DateAdded = f.DateAdded
+            })
+            .ToListAsync();
+
+        return favorites;
+    }
+
+    public async Task<Shared.DTO.Interactions.ContentAverageDto> GetContentAverageAsync(int contentId)
+    {
+        var stats = await _context.UserRatings
+            .Where(r => r.ContentID == contentId)
+            .GroupBy(r => 1)
+            .Select(g => new { Avg = g.Average(r => r.Score), Count = g.Count() })
+            .FirstOrDefaultAsync();
+
+        if (stats == null) return new Shared.DTO.Interactions.ContentAverageDto { Average = 0.0, Count = 0 };
+
+        return new Shared.DTO.Interactions.ContentAverageDto { Average = Math.Round(stats.Avg, 2), Count = stats.Count };
+    }
 }

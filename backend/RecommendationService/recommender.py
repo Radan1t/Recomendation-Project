@@ -16,6 +16,7 @@ class HybridRecommender:
         query_content = """
             SELECT c."ContentID", c."Title", COALESCE(c."AverageRating", 0) as "AverageRating", c."PosterURL",
                    COALESCE(g."Developer", f."Director", b."Author", s."Network", 'Unknown') as "Creator",
+                   CASE WHEN g."ContentID" IS NOT NULL THEN 'Game' WHEN f."ContentID" IS NOT NULL THEN 'Film' WHEN b."ContentID" IS NOT NULL THEN 'Book' WHEN s."ContentID" IS NOT NULL THEN 'Series' ELSE 'Unknown' END as "ContentType",
                    COALESCE(string_agg(DISTINCT gn."Name", ' '), '') as genres,
                    COALESCE(string_agg(DISTINCT t."Name", ' '), '') as tags
             FROM "Contents" c
@@ -28,7 +29,7 @@ class HybridRecommender:
             LEFT JOIN "ContentTags" ct ON c."ContentID" = ct."ContentID"
             LEFT JOIN "Tags" t ON ct."TagID" = t."TagID"
             GROUP BY c."ContentID", c."Title", c."AverageRating", c."PosterURL",
-                     g."Developer", f."Director", b."Author", s."Network"
+                     g."Developer", f."Director", b."Author", s."Network", g."ContentID", f."ContentID", b."ContentID", s."ContentID"
         """
         self.df_contents = fetch_from_content(query_content)
 
@@ -41,8 +42,25 @@ class HybridRecommender:
         self.tfidf_matrix = self.vectorizer.fit_transform(self.df_contents['features'])
 
     def get_dynamic_user_profile(self, user_id: int):
-        """Збирає інтереси з профілю, обраного та високих оцінок"""
+        """Збирає інтереси з профілю, обраного та високих оцінок.
+        Якщо користувач має взаємодії (оцінки/обране), використовує ЛИШЕ їх.
+        Якщо немає — використовує початкові жанри з реєстрації.
+        """
 
+        q_inter = """
+            SELECT "ContentID" FROM "UserFavorites" WHERE "UserID" = %(uid)s
+            UNION ALL
+            SELECT "ContentID" FROM "UserRatings" WHERE "UserID" = %(uid)s AND "Score" >= 4
+        """
+        liked_ids = fetch_from_interact(q_inter, {"uid": user_id})['ContentID'].tolist()
+        
+        # Якщо є взаємодії - використовуємо ЛИШЕ динамічний профіль
+        if liked_ids:
+            features = self.df_contents[self.df_contents['ContentID'].isin(liked_ids)]['features'].tolist()
+            dynamic_f = " ".join(features)
+            return dynamic_f.strip()
+        
+        # Якщо немає взаємодій - використовуємо статичний профіль (жанри з реєстрації)
         q_profile = """
             SELECT COALESCE(string_agg(DISTINCT g."Name", ' '), '') as g,
                    COALESCE(string_agg(DISTINCT t."Name", ' '), '') as t
@@ -56,20 +74,7 @@ class HybridRecommender:
         df_p = fetch_from_user(q_profile, {"uid": user_id})
         static_f = (df_p['g'][0] + " " + df_p['t'][0]).strip() if not df_p.empty else ""
 
-        q_inter = """
-            SELECT "ContentID" FROM "UserFavorites" WHERE "UserID" = %(uid)s
-            UNION ALL
-            SELECT "ContentID" FROM "UserRatings" WHERE "UserID" = %(uid)s AND "Score" >= 4
-        """
-        liked_ids = fetch_from_interact(q_inter, {"uid": user_id})['ContentID'].tolist()
-        
-        dynamic_f = ""
-        if liked_ids:
-
-            features = self.df_contents[self.df_contents['ContentID'].isin(liked_ids)]['features'].tolist()
-            dynamic_f = " ".join(features)
-
-        return (static_f + " " + dynamic_f).strip()
+        return static_f
 
     def get_content_based_scores(self, user_id: int):
         profile_text = self.get_dynamic_user_profile(user_id)
@@ -102,12 +107,27 @@ class HybridRecommender:
             if cid in scores.index: cf_res[i] = scores[cid]
         return cf_res / cf_res.max() if cf_res.max() > 0 else cf_res
 
-    def generate_hybrid(self, user_id: int, top_n: int = 200):
+    def generate_hybrid(self, user_id: int, total_recommendations: int = 100, per_type_min: int = 12):
+        """Return total_recommendations items with at least per_type_min for each type.
+        If a type has more than per_type_min top items, include all of them.
+        """
         self.load_data()
         cbf = self.get_content_based_scores(user_id)
-        cf = self.get_collaborative_scores(user_id)
 
-        hybrid_scores = (0.6 * cbf) + (0.4 * cf)
+        # Перевіряємо, чи є у користувача взаємодії (обране або оцінки)
+        q_any = """
+            SELECT 1 FROM "UserFavorites" WHERE "UserID" = %(uid)s
+            UNION
+            SELECT 1 FROM "UserRatings" WHERE "UserID" = %(uid)s
+        """
+        has_interactions = not fetch_from_interact(q_any, {"uid": user_id}).empty
+
+        if not has_interactions:
+            # Якщо немає взаємодій — рекомендації лише за вибраними жанрами (контент-орієнтовані)
+            hybrid_scores = cbf
+        else:
+            cf = self.get_collaborative_scores(user_id)
+            hybrid_scores = (0.6 * cbf) + (0.4 * cf)
         
         df_res = self.df_contents.copy()
         df_res['hybrid_score'] = hybrid_scores
@@ -121,9 +141,75 @@ class HybridRecommender:
         """
         seen_ids = fetch_from_interact(q_seen, {"uid": user_id})['ContentID'].tolist()
         df_res = df_res[~df_res['ContentID'].isin(seen_ids)]
-        
-        return df_res.sort_values(by='hybrid_score', ascending=False).head(top_n)\
-               [['ContentID', 'Title', 'hybrid_score']].to_dict(orient='records')
+
+        # Ensure ContentType column exists
+        if 'ContentType' not in df_res.columns:
+            df_res['ContentType'] = 'Unknown'
+
+        desired_types = ['Film', 'Series', 'Game', 'Book']
+        selected = []
+        selected_ids = set()
+
+        # Pre-sort overall pool by score
+        overall_sorted = df_res.sort_values(by='hybrid_score', ascending=False).copy()
+
+        # Step 1: Ensure minimum per_type_min for each type
+        for t in desired_types:
+            group = df_res[df_res['ContentType'] == t].sort_values(by='hybrid_score', ascending=False)
+            take = group.head(per_type_min)
+            for _, row in take.iterrows():
+                cid = int(row['ContentID'])
+                if cid in selected_ids:
+                    continue
+                selected.append({
+                    'ContentID': cid,
+                    'Title': str(row['Title']),
+                    'hybrid_score': float(row['hybrid_score']),
+                    'ContentType': str(row['ContentType'])
+                })
+                selected_ids.add(cid)
+
+        # Step 2: If still below total_recommendations, fill with the best remaining items
+        remaining = total_recommendations - len(selected)
+        if remaining > 0:
+            # Add from types that have more high-scoring items beyond per_type_min
+            for t in desired_types:
+                if remaining <= 0:
+                    break
+                group = df_res[df_res['ContentType'] == t].sort_values(by='hybrid_score', ascending=False)
+                # Skip already selected
+                group = group[~group['ContentID'].isin(list(selected_ids))]
+                # Take up to remaining
+                to_add = group.head(remaining)
+                for _, row in to_add.iterrows():
+                    if remaining <= 0:
+                        break
+                    cid = int(row['ContentID'])
+                    if cid not in selected_ids:
+                        selected.append({
+                            'ContentID': cid,
+                            'Title': str(row['Title']),
+                            'hybrid_score': float(row['hybrid_score']),
+                            'ContentType': str(row['ContentType'])
+                        })
+                        selected_ids.add(cid)
+                        remaining -= 1
+
+        # Step 3: If still below total_recommendations, fill from any remaining content
+        if remaining > 0:
+            filler = overall_sorted[~overall_sorted['ContentID'].isin(list(selected_ids))].head(remaining)
+            for _, row in filler.iterrows():
+                cid = int(row['ContentID'])
+                ctype = row['ContentType'] if 'ContentType' in row.index else 'Unknown'
+                selected.append({
+                    'ContentID': cid,
+                    'Title': str(row['Title']),
+                    'hybrid_score': float(row['hybrid_score']),
+                    'ContentType': str(ctype)
+                })
+                selected_ids.add(cid)
+
+        return selected
 
 
 

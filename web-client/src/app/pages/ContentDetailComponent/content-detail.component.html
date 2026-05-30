@@ -1,15 +1,38 @@
 ﻿<div class="page-container">
+  
   <header class="top-nav">
     <div class="nav-left">
-      <div class="logo" routerLink="/home" style="cursor: pointer;">✺</div>
-      <button class="dropbtn" routerLink="/home">Головна</button>
+      <div class="logo" (click)="goToHome()">✺</div>
+      <div class="dropdown">
+        <button class="dropbtn">Browse <span class="arrow">▼</span></button>
+        <div class="dropdown-content">
+          <a (click)="navigateTo('all')">Explore all</a>
+          <a (click)="navigateTo('games')">Games</a>
+          <a (click)="navigateTo('films')">Films</a>
+          <a (click)="navigateTo('series')">Series</a>
+          <a (click)="navigateTo('books')">Books</a>
+        </div>
+      </div>
+      <button class="surprise-btn" (click)="unexpectedRecommendation()" title="Surprise me">
+  <span class="dice-icon">🎲</span> Surprise
+</button>
     </div>
+
     <div class="nav-center">
-      <div class="search-bar"><input type="text" placeholder="Пошук..."></div>
+      <div class="search-container">
+        <div class="search-bar">
+          <input 
+            type="text" 
+            placeholder="Search for content..." 
+            (keyup.enter)="navigateTo('all')"
+          />
+        </div>
+      </div>
     </div>
+
     <div class="nav-right">
-      <button class="dropbtn">Профіль</button>
-      <div class="avatar" (click)="logout()"></div>
+      <button class="btn-logout" (click)="logout()">Logout</button>
+      <div class="avatar" (click)="goToProfile()" style="cursor:pointer"></div>
     </div>
   </header>
 
@@ -17,6 +40,7 @@
     <main class="content-wrapper">
       
       <section class="hero-section">
+        
         <div class="poster-container">
           <img [src]="content.posterUrl" [alt]="content.title" class="main-poster" (error)="onImageError($event)">
         </div>
@@ -29,55 +53,77 @@
             </button>
           </div>
 
-          <p class="description"><strong>Опис:</strong> {{ content.description }}</p>
+          <div class="description">
+            <strong>Опис:</strong> 
+            <span>{{ content.description }}</span>
+          </div>
           
           <div class="metadata">
-            <p *ngIf="content.developer"><strong>Розробник:</strong> <span class="underline">{{ content.developer }}</span></p>
-            <p *ngIf="content.publisher"><strong>Видавець:</strong> <span class="underline">{{ content.publisher }}</span></p>
-            <p *ngIf="content.director"><strong>Режисер:</strong> <span class="underline">{{ content.director }}</span></p>
-            <p *ngIf="content.author"><strong>Автор:</strong> <span class="underline">{{ content.author }}</span></p>
-            
-            <p *ngIf="content.pages"><strong>Сторінок:</strong> <span>{{ content.pages }}</span></p>
-            <p *ngIf="content.durationMinutes"><strong>Тривалість:</strong> <span>{{ content.durationMinutes }} хв</span></p>
-            <p *ngIf="content.seasonCount"><strong>Кількість сезонів:</strong> <span>{{ content.seasonCount }}</span></p>
-            <p *ngIf="content.status"><strong>Статус:</strong> <span>{{ content.status }}</span></p>
+            <ng-container *ngIf="isType('game')">
+              <p *ngIf="content.developer"><strong>Розробник:</strong> <span>{{ content.developer }}</span></p>
+              <p *ngIf="content.publisher"><strong>Видавець:</strong> <span>{{ content.publisher }}</span></p>
+            </ng-container>
 
-            <p><strong>Жанри:</strong> <span class="underline">{{ content.genres }}</span></p>
-            <p><strong>Дата виходу:</strong> {{ content.releaseDate }}</p>
-            <p *ngIf="content.pegi && content.pegi !== '0+'"><strong>Рейтинг:</strong> {{ content.pegi }}</p>
+            <ng-container *ngIf="isType('film') || isType('movie')">
+              <p *ngIf="content.director"><strong>Режисер:</strong> <span>{{ content.director }}</span></p>
+              <p *ngIf="content.cast"><strong>Каст:</strong> <span>{{ content.cast }}</span></p>
+              <p *ngIf="content.durationMinutes"><strong>Тривалість:</strong> <span>{{ content.durationMinutes }} хв</span></p>
+              <p *ngIf="content.country"><strong>Країна:</strong> <span>{{ content.country }}</span></p>
+            </ng-container>
+
+            <ng-container *ngIf="isType('series')">
+              <p *ngIf="content.creator"><strong>Створив:</strong> <span>{{ content.creator }}</span></p>
+              <p *ngIf="content.seasonCount"><strong>Сезонів:</strong> <span>{{ content.seasonCount }}</span></p>
+              <p *ngIf="content.episodeCount"><strong>Епізодів:</strong> <span>{{ content.episodeCount }}</span></p>
+            </ng-container>
+
+            <ng-container *ngIf="isType('book')">
+              <p *ngIf="content.author"><strong>Автор:</strong> <span>{{ content.author }}</span></p>
+              <p *ngIf="content.publisher"><strong>Видавець:</strong> <span>{{ content.publisher }}</span></p>
+              <p *ngIf="content.pages"><strong>Сторінок:</strong> <span>{{ content.pages }}</span></p>
+              <p *ngIf="content.isbn"><strong>ISBN:</strong> <span>{{ content.isbn }}</span></p>
+            </ng-container>
+
+            <p><strong>Жанри:</strong> <span>{{ content.genres }}</span></p>
+            <p><strong>Дата виходу:</strong> <span>{{ content.releaseDate }}</span></p>
+            <p *ngIf="content.pegi && content.pegi !== '0+'"><strong>Рейтинг:</strong> <span>{{ content.pegi }}</span></p>
           </div>
-        </div>
-      </section>
 
-      <section class="middle-section" style="justify-content: center;">
-        <div class="rating-block" style="margin: 0 auto; min-width: 400px;">
-          <h2 class="title-italic text-center">Рейтинг</h2>
+          <div class="rating-block">
+            <div class="rating-item">
+              <span class="rating-label">Загальний рейтинг</span>
+              <span class="rating-value">{{ content.siteAverageRating | number:'1.1-1' }} <small>/ 10.0</small></span>
+            </div>
 
-          <div class="rating-item site-rating" style="justify-content: center; margin-bottom: 20px;">
-            <span class="rating-label">Оцінка користувачів платформи:</span>
-            <span class="rating-value" style="font-size: 1.5em; margin-left: 10px;">
-              {{ content.siteAverageRating | number:'1.1-1' }} / 5.0
-            </span>
-          </div>
+            <div class="vertical-divider"></div>
 
-          <div class="user-rate-action" style="text-align: center;">
-            <p>Ваша оцінка:</p>
-            <div class="stars" style="justify-content: center;">
-              @for (star of [1, 2, 3, 4, 5]; track star) {
-                <span class="star" 
-                      [class.active]="star <= (hoveredStar || content.userRating || 0)"
-                      (mouseenter)="hoveredStar = star"
-                      (mouseleave)="hoveredStar = 0"
-                      (click)="rateContent(star)">
-                  ★
-                </span>
-              }
+            <div class="rating-item">
+              <span class="rating-label">Рейтинг платформи</span>
+              <span class="rating-value">{{ (content.platformRating || 0) | number:'1.1-1' }} <small>/ 5.0</small></span>
+            </div>
+
+            <div class="vertical-divider"></div>
+
+            <div class="user-rate-action">
+              <p>Ваша оцінка</p>
+              <div class="stars">
+                @for (star of [1, 2, 3, 4, 5]; track star) {
+                  <span class="star" 
+                        [class.active]="star <= (hoveredStar || content.userRating || 0)"
+                        (mouseenter)="hoveredStar = star"
+                        (mouseleave)="hoveredStar = 0"
+                        (click)="rateContent(star)">
+                    ★
+                  </span>
+                }
+              </div>
             </div>
           </div>
+
         </div>
       </section>
 
-      <section class="similar-section" *ngIf="content.similarContent.length">
+      <section class="similar-section" *ngIf="content.similarContent && content.similarContent.length">
         <h2 class="title-italic">Схожий контент</h2>
         <div class="row-container">
           @for (item of content.similarContent; track item.id) {

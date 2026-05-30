@@ -43,7 +43,14 @@ namespace ApiGateway.Controllers
 
             try
             {
-                var response = await _httpClient.GetAsync(targetUrl);
+                // Forward Authorization header if present
+                var request = new HttpRequestMessage(HttpMethod.Get, targetUrl);
+                if (Request.Headers.ContainsKey("Authorization"))
+                {
+                    request.Headers.TryAddWithoutValidation("Authorization", Request.Headers["Authorization"].ToString());
+                }
+
+                var response = await _httpClient.SendAsync(request);
                 var data = await response.Content.ReadAsStringAsync();
 
                 _logger.LogInformation($"[Gateway] Статус відповіді від ContentService: {response.StatusCode}");
@@ -61,19 +68,23 @@ namespace ApiGateway.Controllers
         }
 
         [HttpGet("genres")]
-        public async Task<IActionResult> GetGenres()
+        public async Task<IActionResult> GetGenres([FromQuery] string? type = null)
         {
-            _logger.LogInformation("[Gateway] Отримано запит на genres");
-            var targetUrl = $"{GetContentServiceUrl()}/api/v1/content/genres";
+            _logger.LogInformation($"[Gateway] Отримано запит на genres. type: '{type}'");
+            var contentUrl = GetContentServiceUrl();
+            var targetUrl = $"{contentUrl}/api/v1/content/genres";
+            if (!string.IsNullOrEmpty(type)) targetUrl += $"?type={Uri.EscapeDataString(type)}";
             
             try
             {
                 _logger.LogInformation($"[Gateway] Робимо запит до: {targetUrl}");
-                var response = await _httpClient.GetAsync(targetUrl);
+                var req = new HttpRequestMessage(HttpMethod.Get, targetUrl);
+                if (Request.Headers.ContainsKey("Authorization")) req.Headers.TryAddWithoutValidation("Authorization", Request.Headers["Authorization"].ToString());
+
+                var response = await _httpClient.SendAsync(req);
                 var data = await response.Content.ReadAsStringAsync();
 
                 if (response.IsSuccessStatusCode) return Content(data, "application/json");
-                
                 _logger.LogError($"[Gateway] Помилка від ContentService (genres): {data}");
                 return StatusCode((int)response.StatusCode, data);
             }
@@ -93,11 +104,13 @@ namespace ApiGateway.Controllers
             try
             {
                 _logger.LogInformation($"[Gateway] Робимо запит до: {targetUrl}");
-                var response = await _httpClient.GetAsync(targetUrl);
+                var req2 = new HttpRequestMessage(HttpMethod.Get, targetUrl);
+                if (Request.Headers.ContainsKey("Authorization")) req2.Headers.TryAddWithoutValidation("Authorization", Request.Headers["Authorization"].ToString());
+
+                var response = await _httpClient.SendAsync(req2);
                 var data = await response.Content.ReadAsStringAsync();
 
                 if (response.IsSuccessStatusCode) return Content(data, "application/json");
-                
                 _logger.LogError($"[Gateway] Помилка від ContentService (languages): {data}");
                 return StatusCode((int)response.StatusCode, data);
             }
@@ -116,7 +129,10 @@ namespace ApiGateway.Controllers
              _logger.LogInformation($"[Gateway] Робимо запит до: {targetUrl}");
              
              try {
-                 var response = await _httpClient.GetAsync(targetUrl);
+                 var req3 = new HttpRequestMessage(HttpMethod.Get, targetUrl);
+                 if (Request.Headers.ContainsKey("Authorization")) req3.Headers.TryAddWithoutValidation("Authorization", Request.Headers["Authorization"].ToString());
+
+                 var response = await _httpClient.SendAsync(req3);
                  var data = await response.Content.ReadAsStringAsync();
                  if (response.IsSuccessStatusCode) return Content(data, "application/json");
                  return StatusCode((int)response.StatusCode, data);
@@ -129,6 +145,26 @@ namespace ApiGateway.Controllers
         
         
         
+        [HttpGet("list")]
+        public async Task<IActionResult> GetContentList([FromQuery] string type, [FromQuery] string? q = null, [FromQuery] int? genreId = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        {
+            var contentUrl = GetContentServiceUrl();
+            if (string.IsNullOrEmpty(contentUrl)) return StatusCode(500, "URL для ContentService не знайдено.");
+
+            var url = $"{contentUrl}/api/v1/content/list?type={Uri.EscapeDataString(type ?? "")}";
+            if (!string.IsNullOrEmpty(q)) url += $"&q={Uri.EscapeDataString(q)}";
+            if (genreId.HasValue) url += $"&genreId={genreId.Value}";
+            url += $"&page={page}&pageSize={pageSize}";
+
+            _logger.LogInformation($"[Gateway] Робимо запит до: {url}");
+            var req4 = new HttpRequestMessage(HttpMethod.Get, url);
+            if (Request.Headers.ContainsKey("Authorization")) req4.Headers.TryAddWithoutValidation("Authorization", Request.Headers["Authorization"].ToString());
+            var response = await _httpClient.SendAsync(req4);
+            var content = await response.Content.ReadAsStringAsync();
+            if (response.IsSuccessStatusCode) return Content(content, "application/json");
+            return StatusCode((int)response.StatusCode, content);
+        }
+
         [HttpGet("search")]
         public async Task<IActionResult> SearchGlobalContent([FromQuery] string q)
         {
@@ -145,7 +181,9 @@ namespace ApiGateway.Controllers
 
             try
             {
-                var response = await _httpClient.GetAsync(targetUrl);
+                var req5 = new HttpRequestMessage(HttpMethod.Get, targetUrl);
+                if (Request.Headers.ContainsKey("Authorization")) req5.Headers.TryAddWithoutValidation("Authorization", Request.Headers["Authorization"].ToString());
+                var response = await _httpClient.SendAsync(req5);
                 var data = await response.Content.ReadAsStringAsync();
 
                 if (response.IsSuccessStatusCode) return Content(data, "application/json");
@@ -179,7 +217,10 @@ namespace ApiGateway.Controllers
 
             try
             {
-                var response = await _httpClient.GetAsync(targetUrl);
+                var req6 = new HttpRequestMessage(HttpMethod.Get, targetUrl);
+                if (Request.Headers.ContainsKey("Authorization")) req6.Headers.TryAddWithoutValidation("Authorization", Request.Headers["Authorization"].ToString());
+
+                var response = await _httpClient.SendAsync(req6);
                 var data = await response.Content.ReadAsStringAsync();
 
                 _logger.LogInformation($"[Gateway] Статус відповіді від ContentService (ID {id}): {response.StatusCode}");
@@ -207,7 +248,9 @@ namespace ApiGateway.Controllers
             var contentUrl = GetContentServiceUrl();
             if (string.IsNullOrEmpty(contentUrl)) return StatusCode(500, "URL для ContentService не знайдено.");
 
-            var response = await _httpClient.GetAsync($"{contentUrl}/api/v1/content/admin/list?type={type}");
+            var req7 = new HttpRequestMessage(HttpMethod.Get, $"{contentUrl}/api/v1/content/admin/list?type={type}");
+            if (Request.Headers.ContainsKey("Authorization")) req7.Headers.TryAddWithoutValidation("Authorization", Request.Headers["Authorization"].ToString());
+            var response = await _httpClient.SendAsync(req7);
             var content = await response.Content.ReadAsStringAsync();
             
             if (response.IsSuccessStatusCode) return Content(content, "application/json");
@@ -220,7 +263,9 @@ namespace ApiGateway.Controllers
             var contentUrl = GetContentServiceUrl();
             if (string.IsNullOrEmpty(contentUrl)) return StatusCode(500, "URL для ContentService не знайдено.");
 
-            var response = await _httpClient.DeleteAsync($"{contentUrl}/api/v1/content/admin/{id}");
+            var delReq = new HttpRequestMessage(HttpMethod.Delete, $"{contentUrl}/api/v1/content/admin/{id}");
+            if (Request.Headers.ContainsKey("Authorization")) delReq.Headers.TryAddWithoutValidation("Authorization", Request.Headers["Authorization"].ToString());
+            var response = await _httpClient.SendAsync(delReq);
             var content = await response.Content.ReadAsStringAsync();
             
             if (response.IsSuccessStatusCode) return Content(content, "application/json");
@@ -234,7 +279,9 @@ namespace ApiGateway.Controllers
             if (string.IsNullOrEmpty(contentUrl)) return StatusCode(500, "URL для ContentService не знайдено.");
 
             var jsonContent = new StringContent(JsonSerializer.Serialize(updateDto), Encoding.UTF8, "application/json");
-            var response = await _httpClient.PutAsync($"{contentUrl}/api/v1/content/admin/{id}", jsonContent);
+            var putReq = new HttpRequestMessage(HttpMethod.Put, $"{contentUrl}/api/v1/content/admin/{id}") { Content = jsonContent };
+            if (Request.Headers.ContainsKey("Authorization")) putReq.Headers.TryAddWithoutValidation("Authorization", Request.Headers["Authorization"].ToString());
+            var response = await _httpClient.SendAsync(putReq);
             var content = await response.Content.ReadAsStringAsync();
             
             if (response.IsSuccessStatusCode) return Content(content, "application/json");

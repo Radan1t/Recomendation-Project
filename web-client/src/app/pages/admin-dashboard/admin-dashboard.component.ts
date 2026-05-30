@@ -1,8 +1,9 @@
 ﻿import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router'; 
 import { AdminService } from '../../core/services/admin.service';
+import { RecommendationService } from '../../core/services/recommendation.service';
 
 type ViewState = 'hub' | 'games' | 'movies' | 'series' | 'books';
 
@@ -18,30 +19,103 @@ export class AdminDashboardComponent implements OnInit {
   loading = false; 
   isTableLoading = false; 
 
-  
   allTableData: any[] = []; 
   filteredData: any[] = []; 
   currentTableData: any[] = []; 
 
-  
   searchQuery: string = '';
 
-  
   currentPage = 1;
   pageSize = 100;
   totalPages = 1;
 
-  
   gamePage = 1;
   moviePage = 1;
   seriesPage = 1;
   bookSubject = 'fiction';
   bookStartIndex = 0;
+  bookGenres = [
+    { name: 'Fiction (Художня література)', value: 'fiction' },
+    { name: 'Fantasy (Фентезі)', value: 'fantasy' },
+    { name: 'Science Fiction (Наукова фантастика)', value: 'science fiction' },
+    { name: 'Mystery (Містика / Детектив)', value: 'mystery' },
+    { name: 'Thriller (Трилер)', value: 'thriller' },
+    { name: 'Romance (Романтика)', value: 'romance' },
+    { name: 'Horror (Жахи)', value: 'horror' },
+    { name: 'Historical Fiction (Історичний роман)', value: 'historical fiction' },
+    { name: 'Comics (Комікси)', value: 'comics' },
+    { name: 'History (Історія)', value: 'history' },
+    { name: 'Biography (Біографії)', value: 'biography' },
+    { name: 'Psychology (Психологія)', value: 'psychology' },
+    { name: 'Philosophy (Філософія)', value: 'philosophy' },
+    { name: 'Business (Бізнес)', value: 'business' },
+    { name: 'Art (Мистецтво)', value: 'art' },
+    { name: 'Travel (Подорожі)', value: 'travel' },
+    { name: 'Computers (Комп\'ютери та IT)', value: 'computers' },
+    { name: 'Programming (Програмування)', value: 'programming' },
+    { name: 'Science (Наука)', value: 'science' },
+    { name: 'Mathematics (Математика)', value: 'mathematics' }
+  ];
 
-  constructor(private adminService: AdminService, private cdr: ChangeDetectorRef) {}
+  constructor(
+    private adminService: AdminService, 
+    private cdr: ChangeDetectorRef,
+    private router: Router,
+    private recommendationService: RecommendationService
+  ) {}
 
   ngOnInit(): void {}
 
+  // =========================================
+  // МЕТОДИ НАВІГАЦІЇ (ДЛЯ ХЕДЕРА)
+  // =========================================
+  goToHome() {
+    this.router.navigate(['/home']);
+  }
+
+  navigateTo(category: string) {
+    this.router.navigate(['/browse'], { queryParams: { type: category } });
+  }
+
+  unexpectedRecommendation() {
+    const uidStr = typeof localStorage !== 'undefined' ? localStorage.getItem('user_id') : null;
+    const uid = uidStr ? Number(uidStr) : null;
+    if (!uid) {
+      alert('User ID not found. Please login as a user to get recommendations.');
+      return;
+    }
+    this.recommendationService.generateRecommendations(uid).subscribe({
+      next: (res: any) => {
+        const recs = res?.recommendations || [];
+        if (!recs.length) {
+          alert('No recommendations available.');
+          return;
+        }
+        const rand = recs[Math.floor(Math.random() * recs.length)];
+        const cid = rand.ContentID || rand.contentID || rand.id;
+        if (cid) {
+          this.router.navigate(['/content', cid]);
+        } else {
+          alert('Cannot determine content id from recommendation.');
+        }
+      },
+      error: (err: any) => {
+        console.error('Recommendation error', err);
+        alert('Failed to fetch recommendations.');
+      }
+    });
+  }
+
+  logout() {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('token'); 
+    }
+    this.router.navigate(['/login']);
+  }
+
+  // =========================================
+  // ЛОГІКА АДМІНКИ
+  // =========================================
   setView(view: ViewState) {
     this.currentView = view;
     if (view !== 'hub') {
@@ -49,7 +123,7 @@ export class AdminDashboardComponent implements OnInit {
       this.searchQuery = ''; 
       this.allTableData = [];
       this.filteredData = [];
-      this.currentTableData = []; 
+      this.currentTableData = [];
       this.loadTableData(view);
     }
   }
@@ -62,7 +136,6 @@ export class AdminDashboardComponent implements OnInit {
     this.adminService.getContent(category).subscribe({
       next: (data: any) => { 
         let finalData: any[] = [];
-        
         
         if (Array.isArray(data)) {
           finalData = data;
@@ -98,7 +171,6 @@ export class AdminDashboardComponent implements OnInit {
       const query = this.searchQuery.toLowerCase().trim();
       this.filteredData = this.allTableData.filter(item => {
         const title = (item.title || item.Title || '').toLowerCase();
-        
         return title.includes(query); 
       });
     }
@@ -106,12 +178,9 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   updatePaginatedData() {
-    
     this.totalPages = Math.ceil(this.filteredData.length / this.pageSize) || 1; 
     const startIndex = (this.currentPage - 1) * this.pageSize;
     const endIndex = startIndex + this.pageSize;
-    
-    
     this.currentTableData = this.filteredData.slice(startIndex, endIndex);
   }
 
@@ -165,7 +234,6 @@ export class AdminDashboardComponent implements OnInit {
     }
   }
 
-  
   onImportGames() { this.runImport(this.adminService.importGames(this.gamePage)); }
   onImportMovies() { this.runImport(this.adminService.importMovies(this.moviePage)); }
   onImportSeries() { this.runImport(this.adminService.importSeries(this.seriesPage)); }

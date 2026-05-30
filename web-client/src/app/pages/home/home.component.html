@@ -1,7 +1,7 @@
 ﻿<div class="home-container">
   <header class="top-nav">
     <div class="nav-left">
-      <div class="logo">✺</div>
+      <div class="logo" (click)="goToHome()">✺</div>
       <div class="dropdown">
         <button class="dropbtn">Browse <span class="arrow">▼</span></button>
         <div class="dropdown-content">
@@ -12,6 +12,9 @@
           <a (click)="navigateTo('books')">Books</a>
         </div>
       </div>
+      <button class="surprise-btn" (click)="unexpectedRecommendation()" title="Surprise me">
+  <span class="dice-icon">🎲</span> Surprise
+</button>
     </div>
 
     <div class="nav-center">
@@ -52,7 +55,7 @@
 
     <div class="nav-right">
       <button class="btn-logout" (click)="logout()">Logout</button>
-      <div class="avatar"></div>
+      <div class="avatar" (click)="goToProfile()" style="cursor:pointer"></div>
     </div>
   </header>
 

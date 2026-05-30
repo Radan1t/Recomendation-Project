@@ -1,7 +1,30 @@
 ﻿<div class="analytics-page">
   <div class="overlay"></div>
-  
-  <header class="admin-header">
+
+  <header class="top-nav">
+    <div class="nav-left">
+      <div class="logo" (click)="goToHome()">✺</div>
+      <div class="dropdown">
+        <button class="dropbtn">Browse <span class="arrow">▼</span></button>
+        <div class="dropdown-content">
+          <a (click)="navigateTo('all')">Explore all</a>
+          <a (click)="navigateTo('games')">Games</a>
+          <a (click)="navigateTo('films')">Films</a>
+          <a (click)="navigateTo('series')">Series</a>
+          <a (click)="navigateTo('books')">Books</a>
+        </div>
+      </div>
+    </div>
+    <div class="nav-right">
+      <button class="btn-logout" (click)="logout()">Logout</button>
+      <div class="avatar"></div>
+    </div>
+  </header>
+  <div style="margin-top: 30px;">
+    <button class="back-btn" (click)="goToAdmin()">← Повернутися до панелі керування</button>
+  </div>
+
+  <header class="admin-header" style="margin-top: 30px;">
     <h1>Platform Analytics <span class="v-line">|</span> <small>Admin Dashboard</small></h1>
   </header>
 

@@ -1,4 +1,24 @@
 ﻿<div class="admin-page">
+  <header class="top-nav">
+    <div class="nav-left">
+      <div class="logo" (click)="goToHome()">✺</div>
+      <div class="dropdown" style="display:inline-block;">
+        <button class="dropbtn">Browse <span class="arrow">▼</span></button>
+        <div class="dropdown-content">
+          <a (click)="navigateTo('all')">Explore all</a>
+          <a (click)="navigateTo('games')">Games</a>
+          <a (click)="navigateTo('films')">Films</a>
+          <a (click)="navigateTo('series')">Series</a>
+          <a (click)="navigateTo('books')">Books</a>
+        </div>
+      </div>
+    </div>
+    <div class="nav-right">
+      <button class="btn-logout" (click)="logout()">Logout</button>
+      <div class="avatar"></div>
+    </div>
+  </header>
+
   <header class="admin-header">
     <h1>Панель керування <span class="gold-text">Платформою</span></h1>
     <div class="header-status">Доступ: Адміністратор</div>
@@ -30,7 +50,7 @@
     </div>
 
     <div class="hub-card glass-card highlight-card" routerLink="/analytics">
-      <div class="card-title">Статистика</div>
+      <div class="card-title">Аналітика</div>
       <div class="card-actions"><span>Графіки та аналітика платформи</span></div>
       <div class="card-bg-icon">📊</div>
     </div>
@@ -47,7 +67,6 @@
 
       <div class="import-panel">
         <h3>Автоматичний імпорт</h3>
-        
         <div class="tool-group">
           <ng-container [ngSwitch]="currentView">
             <input *ngSwitchCase="'games'" type="number" [(ngModel)]="gamePage" min="1" placeholder="Стор.">
@@ -55,8 +74,10 @@
             <input *ngSwitchCase="'series'" type="number" [(ngModel)]="seriesPage" min="1" placeholder="Стор.">
             
             <ng-container *ngSwitchCase="'books'">
-              <input type="text" [(ngModel)]="bookSubject" placeholder="Жанр (напр. fiction)">
-              <input type="number" [(ngModel)]="bookStartIndex" min="0" placeholder="Стартовий індекс (напр. 0)">
+              <select [(ngModel)]="bookSubject" class="styled-select">
+                <option *ngFor="let genre of bookGenres" [value]="genre.value">{{ genre.name }}</option>
+              </select>
+              <input type="number" [(ngModel)]="bookStartIndex" min="0" placeholder="Індекс (почат. 0)">
             </ng-container>
           </ng-container>
 
@@ -70,7 +91,6 @@
       <hr class="divider">
 
       <div class="crud-panel">
-        
         <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
           <h3>База даних ({{ filteredData.length }} / {{ allTableData.length }} записів)</h3>
           
@@ -80,18 +100,12 @@
               [(ngModel)]="searchQuery" 
               (input)="onSearch()" 
               placeholder="🔍 Пошук за назвою..." 
-              style="width: 100%; padding: 8px 15px; border-radius: 20px; border: 1px solid rgba(255, 215, 0, 0.3); background: rgba(0, 0, 0, 0.5); color: white;">
+              style="width: 100%; padding: 10px 15px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.05); color: white; outline: none;">
           </div>
 
           <button class="add-btn" (click)="onAddManual()">+ Додати новий запис</button>
         </div>
         
-        <div class="pagination-controls" *ngIf="!isTableLoading && filteredData.length > pageSize" style="margin-bottom: 20px;">
-          <button class="page-btn" (click)="prevPage()" [disabled]="currentPage === 1">← Попередня</button>
-          <span class="page-info">Сторінка <strong>{{ currentPage }}</strong> з {{ totalPages }}</span>
-          <button class="page-btn" (click)="nextPage()" [disabled]="currentPage === totalPages">Наступна →</button>
-        </div>
-
         <table class="admin-table">
           <thead>
             <tr>
@@ -124,7 +138,6 @@
             </tr>
           </thead>
           <tbody>
-            
             <tr *ngIf="isTableLoading">
               <td colspan="7" class="empty-state">
                 <span style="color: #f1c40f;">⏳ Завантаження даних з бази...</span>
@@ -133,7 +146,6 @@
 
             <tr *ngIf="!isTableLoading && filteredData.length === 0">
               <td colspan="7" class="empty-state">
-                <i class="icon-database"></i><br>
                 Нічого не знайдено.
               </td>
             </tr>
@@ -163,7 +175,7 @@
                   <td>{{ item.pages || item.Pages || 0 }}</td>
                 </ng-container>
 
-                <td>⭐ {{ (item.averageRating || item.AverageRating || 0) | number:'1.1-1' }}</td>
+                <td>⭐ {{ (item.AvarageRating || item.averageRating || item.AverageRating || 0) | number:'1.1-1' }}</td>
                 <td>{{ (item.releaseDate || item.ReleaseDate) | date:'dd.MM.yyyy' }}</td>
 
                 <td class="row-actions">

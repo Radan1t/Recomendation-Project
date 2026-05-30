@@ -1,0 +1,91 @@
+<div class="page-container">
+  
+  <header class="top-nav">
+    <div class="nav-left">
+      <div class="logo" (click)="goToHome()">✺</div>
+      <div class="dropdown">
+        <button class="dropbtn">Browse <span class="arrow">▼</span></button>
+        <div class="dropdown-content">
+          <a (click)="navigateTo('all')">Explore all</a>
+          <a (click)="navigateTo('games')">Games</a>
+          <a (click)="navigateTo('films')">Films</a>
+          <a (click)="navigateTo('series')">Series</a>
+          <a (click)="navigateTo('books')">Books</a>
+        </div>
+      </div>
+      <button class="surprise-btn" (click)="unexpectedRecommendation()" title="Surprise me">
+  <span class="dice-icon">🎲</span> Surprise
+</button>
+    </div>
+
+    <div class="nav-center">
+      <div class="search-container">
+        <div class="search-bar">
+          <input 
+            type="text" 
+            placeholder="Search for content..." 
+            [(ngModel)]="searchQuery" 
+            (ngModelChange)="onSearchChange()" 
+          />
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-right">
+      <button class="btn-logout" (click)="logout()">Logout</button>
+      <div class="avatar" (click)="goToProfile()" style="cursor:pointer"></div>
+    </div>
+  </header>
+
+  <main class="content-wrapper">
+    <h2 class="section-title">{{ type | titlecase }}</h2>
+
+    <div class="controls">
+      <div class="filter-inline">
+        <label>Genre:</label>
+        <select [(ngModel)]="selectedGenreId" (ngModelChange)="onGenreChange($event)">
+          <option [ngValue]="undefined">All genres</option>
+          <option *ngFor="let g of genres" [ngValue]="g.GenreID">{{ g.Name }}</option>
+        </select>
+      </div>
+
+      <div class="pagination-controls">
+        <button (click)="page=1; loadList();" [disabled]="page<=1">First</button>
+        <button (click)="prevPage()" [disabled]="page<=1">Prev</button>
+
+        <select [(ngModel)]="page" (ngModelChange)="loadList()">
+          <option *ngFor="let p of pageOptions" [ngValue]="p">{{p}}</option>
+        </select>
+
+        <button (click)="nextPage()" [disabled]="page>=totalPages">Next</button>
+        <button (click)="page=totalPages; loadList();" [disabled]="page>=totalPages">Last</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card" *ngFor="let it of items" (click)="goToContent(it.Id || it.id)">
+        <img 
+          class="poster" 
+          [src]="it.PosterUrl || it.posterUrl || 'https://placehold.co/220x330/222/555?text=No+Image'" 
+          (error)="onImageError($event)" 
+          alt="Poster" 
+        />
+        <div class="card-info">
+          <p class="title" [title]="it.Title || it.title">{{ it.Title || it.title }}</p>
+          <p class="meta">⭐ {{ it.AvarageRating || it.AverageRating || it.averageRating || '0.0' }}</p>
+        </div>
+      </div>
+      <div class="card placeholder" *ngFor="let _ of placeholders">
+        <div class="poster" style="background:#222;width:100%;height:320px;"></div>
+      </div>
+    </div>
+
+    <div class="pagination" *ngIf="total > pageSize">
+      <button (click)="prevPage()" [disabled]="page<=1">Prev</button>
+      <span>Page {{page}} / {{ Math.max(1, Math.ceil(total / pageSize)) }}</span>
+      <button (click)="nextPage()" [disabled]="page>=Math.ceil(total / pageSize)">Next</button>
+    </div>
+
+    <div *ngIf="items.length === 0" class="empty">No content found.</div>
+  </main>
+</div>

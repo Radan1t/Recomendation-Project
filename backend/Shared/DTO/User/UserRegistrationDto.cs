@@ -10,5 +10,4 @@ public class UserRegistrationDto
     public string Country { get; set; }
     public List<string> ContentPriorities { get; set; }
     public List<int> FavoriteGenreIds { get; set; }
-    public List<int> PreferredLanguageIds { get; set; }
 }

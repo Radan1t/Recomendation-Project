@@ -11,10 +11,12 @@ builder.Services.AddDbContext<InteractionDbContext>(options =>
 
 builder.Services.AddScoped<IInteractionService, InteractionServiceImplementation>();
 
+// Register IHttpClientFactory so controllers can create HttpClient instances
+builder.Services.AddHttpClient();
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddHttpClient();
 var app = builder.Build();
 
 

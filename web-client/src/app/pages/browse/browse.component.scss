@@ -1,21 +1,23 @@
-﻿/* =========================================
+/* =========================================
    ЗМІННІ ТА ГЛОБАЛЬНІ СТИЛІ
    ========================================= */
 $accent-gold: #ffd700;
+$accent-hover: #ffea00;
 $glass-border: rgba(255, 255, 255, 0.1);
 $card-bg: rgba(255, 255, 255, 0.03);
+$text-muted: #aaa;
 $bg-dark: #121212;
 
-.home-container {
+.page-container {
   background: radial-gradient(circle at top right, #1f1f1f, $bg-dark);
   min-height: 100vh;
   color: white;
-  padding-bottom: 50px;
   font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+  padding-bottom: 60px;
 }
 
 /* =========================================
-   ХЕДЕР (Top Navigation) - Скляний стиль
+   ХЕДЕР (Ідентичний головній сторінці)
    ========================================= */
 .top-nav {
   display: flex;
@@ -98,7 +100,7 @@ $bg-dark: #121212;
           &:hover {
             background-color: rgba(255, 255, 255, 0.08);
             color: $accent-gold;
-            padding-left: 25px;
+            padding-left: 25px; // Легкий зсув тексту при наведенні
           }
         }
       }
@@ -122,7 +124,7 @@ $bg-dark: #121212;
 
       .search-bar input {
         width: 350px;
-        padding: 10px 20px 10px 40px; 
+        padding: 10px 20px 10px 40px; // Відступ для лупи
         border-radius: 20px;
         border: 1px solid rgba(255, 255, 255, 0.15);
         outline: none;
@@ -131,6 +133,7 @@ $bg-dark: #121212;
         font-size: 14px;
         transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         
+        // Іконка лупи
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E");
         background-repeat: no-repeat;
         background-position: 12px center;
@@ -142,65 +145,6 @@ $bg-dark: #121212;
           background-color: rgba(0, 0, 0, 0.6);
           border-color: $accent-gold;
           box-shadow: 0 0 15px rgba(255, 215, 0, 0.15);
-        }
-      }
-
-      // Випадаюче вікно пошуку
-      .search-dropdown {
-        position: absolute;
-        top: calc(100% + 15px);
-        left: 0;
-        width: 100%;
-        background-color: rgba(20, 20, 20, 0.95);
-        backdrop-filter: blur(10px);
-        border-radius: 12px;
-        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8);
-        border: 1px solid $glass-border;
-        max-height: 450px;
-        overflow-y: auto;
-        z-index: 1000;
-
-        &::-webkit-scrollbar { width: 6px; }
-        &::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
-
-        .search-result-item {
-          display: flex;
-          align-items: center;
-          padding: 12px 15px;
-          cursor: pointer;
-          border-bottom: 1px solid rgba(255,255,255,0.05);
-          transition: background-color 0.2s;
-
-          &:last-child { border-bottom: none; }
-          &:hover { background-color: rgba(255,255,255,0.08); }
-
-          .search-thumb {
-            width: 45px;
-            height: 65px;
-            object-fit: cover;
-            border-radius: 6px;
-            margin-right: 15px;
-            background-color: #222;
-          }
-
-          .search-item-info {
-            display: flex;
-            flex-direction: column;
-
-            .search-title {
-              color: white;
-              font-weight: bold;
-              margin: 0 0 5px 0;
-              font-size: 14px;
-            }
-
-            .search-meta {
-              color: #888;
-              font-size: 12px;
-              margin: 0;
-              text-transform: capitalize;
-            }
-          }
         }
       }
     }
@@ -248,122 +192,234 @@ $bg-dark: #121212;
 }
 
 /* =========================================
-   ОБЛАСТЬ КОНТЕНТУ ТА РЯДИ (Carousel)
+   КОНТЕНТ, ФІЛЬТРИ ТА ПАГІНАЦІЯ
    ========================================= */
-.content-area {
-  padding-top: 20px;
+.content-wrapper {
+  max-width: 1600px; // Обмеження максимальної ширини
+  margin: 0 auto;
+  padding: 40px 60px;
 }
 
-.content-section {
-  margin-top: 40px;
+.section-title {
+  font-style: italic;
+  font-size: 42px;
+  font-weight: 900;
+  margin-bottom: 30px;
+  color: white;
+  letter-spacing: -1px;
+}
 
-  .section-title {
-    padding: 0 60px;
-    font-style: italic;
-    font-size: 36px;
-    font-weight: 900;
-    margin-bottom: 20px;
-    color: white;
-    letter-spacing: -1px;
-  }
-
-  .row-container {
+/* Блок з фільтром і верхньою пагінацією */
+.controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(10px);
+  padding: 15px 25px;
+  border-radius: 16px;
+  border: 1px solid $glass-border;
+  margin-bottom: 40px;
+  
+  .filter-inline {
     display: flex;
-    flex-direction: row;     
-    flex-wrap: nowrap;       
-    justify-content: flex-start;
-    align-items: stretch;
-    gap: 25px;               
-    overflow-x: auto;        
-    padding: 10px 60px 40px 60px; 
-    width: 100%;
-    box-sizing: border-box;
-    scroll-behavior: smooth;
-    
-    // Ховаємо скролбар для естетики (або стилізуємо)
-    &::-webkit-scrollbar { height: 6px; }
-    &::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
-    &::-webkit-scrollbar-track { background: transparent; }
+    align-items: center;
+    gap: 15px;
+
+    label {
+      font-weight: 600;
+      font-size: 14px;
+      color: $text-muted;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    select {
+      background-color: rgba(0,0,0,0.4);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 10px 16px;
+      border-radius: 10px;
+      outline: none;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      appearance: none; // Забираємо дефолтну стрілку
+      
+      // Кастомна стрілка для селекта
+      background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px top 50%;
+      background-size: 10px auto;
+      padding-right: 35px;
+
+      &:focus {
+        border-color: $accent-gold;
+        box-shadow: 0 0 10px rgba(255,215,0,0.1);
+      }
+      
+      option {
+        background-color: #1f1f1f;
+        color: white;
+        padding: 10px;
+      }
+    }
   }
+}
+
+/* Пагінація загальна */
+.pagination, .pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  
+  button {
+    background-color: rgba(255,255,255,0.05);
+    color: #eee;
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+
+    &:hover:not([disabled]) {
+      background-color: $accent-gold;
+      color: black;
+      border-color: $accent-gold;
+      transform: translateY(-2px);
+    }
+
+    &[disabled] {
+      background-color: transparent;
+      color: #555;
+      border-color: transparent;
+      cursor: not-allowed;
+    }
+  }
+
+  span {
+    font-size: 14px;
+    font-weight: 600;
+    color: #bbb;
+    margin: 0 10px;
+  }
+
+  /* Селект сторінок всередині пагінації */
+  select {
+    background-color: rgba(0,0,0,0.3);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.2);
+    padding: 6px 12px;
+    border-radius: 6px;
+    outline: none;
+    cursor: pointer;
+    &:focus { border-color: $accent-gold; }
+    option { background-color: #222; }
+  }
+}
+
+.pagination {
+  margin-top: 50px;
+  justify-content: center;
+}
+
+.empty {
+  text-align: center;
+  margin-top: 80px;
+  font-size: 20px;
+  color: #777;
+  font-style: italic;
+  font-weight: 600;
 }
 
 /* =========================================
-   КАРТКА (Горизонтальний скрол)
+   СІТКА ТА КАРТКА
    ========================================= */
+.grid {
+  display: grid;
+  // Використовуємо auto-fill з minmax, щоб картки були не менше 200px
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 25px;
+}
+
 .card {
-  flex: 0 0 auto;          
-  width: 240px;            
   background-color: $card-bg;
   border: 1px solid $glass-border;
-  border-radius: 16px;     
+  border-radius: 16px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   cursor: pointer;
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 
-  &:hover {
+  &:not(.placeholder):hover {
     transform: translateY(-10px);
     border-color: rgba(255,255,255,0.3);
     box-shadow: 0 15px 35px rgba(0,0,0,0.7);
     background-color: rgba(255,255,255,0.06);
 
-    .poster { filter: brightness(1.1); }
+    .poster {
+      filter: brightness(1.1);
+    }
   }
 
   .poster {
     width: 100%;
-    aspect-ratio: 2 / 3; // Забезпечує однакову висоту для всіх картинок        
+    aspect-ratio: 2 / 3;
     object-fit: cover;
     border-bottom: 1px solid rgba(255,255,255,0.05);
-    transition: filter 0.3s ease;    
+    transition: filter 0.3s ease;
   }
 
   .card-info {
-    padding: 16px;         
+    padding: 16px;
     display: flex;
     flex-direction: column;
-    gap: 8px;              
-    flex-grow: 1;          
+    justify-content: space-between;
+    flex-grow: 1;
 
     p { margin: 0; }
     
     .title {
-      font-size: 16px;    
+      font-size: 15px;
       font-weight: 800;
-      color: white;
+      color: #fff;
+      line-height: 1.3;
+      margin-bottom: 8px;
+      
+      // Запобігаємо перенесенню довгих назв, обрізаємо трьома крапками
       white-space: nowrap;
       overflow: hidden;
-      text-overflow: ellipsis; 
+      text-overflow: ellipsis;
     }
 
     .meta {
-      font-size: 13px;    
-      color: #aaa;
-      font-weight: 600;        
-    }
-    
-    // Якщо хочете залишити кнопку Check (можна її сховати і зробити клікабельною всю картку)
-    .btn-check {
-      margin-top: auto;      
-      background: rgba(255,255,255,0.1);
-      color: white;
-      border: 1px solid rgba(255,255,255,0.2);
-      padding: 8px 0;      
-      border-radius: 8px;  
-      font-size: 14px;      
-      font-weight: bold;
-      cursor: pointer;
-      width: 100%;          
-      transition: all 0.2s ease;
-
-      &:hover { 
-        background: $accent-gold; 
-        color: black;
-        border-color: $accent-gold;
-      }
+      font-size: 14px;
+      font-weight: 700;
+      color: $accent-gold;
     }
   }
+}
+
+/* Стиль для плейсхолдерів (порожніх карток при завантаженні) */
+.card.placeholder {
+  background: transparent;
+  border: 1px dashed rgba(255,255,255,0.1);
+  box-shadow: none;
+  cursor: default;
+  
+  .poster {
+    background: linear-gradient(90deg, #1f1f1f 25%, #2a2a2a 50%, #1f1f1f 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite linear;
+  }
+}
+
+@keyframes loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }/* =========================================
    КНОПКА "SURPRISE ME"
    ========================================= */

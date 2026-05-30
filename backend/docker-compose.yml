@@ -94,6 +94,7 @@ services:
       - RawgApi__ApiKey=${RAWG_API_KEY}
       - TmdbApi__BaseUrl=https://api.themoviedb.org/3/
       - TmdbApi__ApiKey=${TMDB_API_KEY}
+      - GOOGLE_BOOKS_API_KEY=${GOOGLE_BOOKS_API_KEY}
     ports:
       - "5003:8080"
     depends_on:

@@ -13,6 +13,7 @@ export interface HomeItem {
   rating: string;
   imageUrl: string;
   category: string;
+  rank?: number;
 }
 
 interface ContentSection {
@@ -127,7 +128,7 @@ export class HomeComponent implements OnInit {
         const ids = recs.map((r: any) => r.ContentID || r.contentID);
 
         return this.contentService.getContentDetailsByIds(ids).pipe(
-          map(details => ({ recs, details: details || [] })),
+          map((details: any[]) => ({ recs, details: details || [] })),
           catchError(() => of({ recs, details: [] }))
         );
       })
@@ -138,25 +139,39 @@ export class HomeComponent implements OnInit {
 
         const enrichedItems: HomeItem[] = recs.map((rec: any) => {
           const recId = rec.ContentID || rec.contentID;
-          const detail = details.find((d: any) => (d.contentID === recId || d.ContentID === recId));
-          
+          const detail = (details || []).find((d: any) => (d.contentID === recId || d.ContentID === recId || d.Id === recId || d.id === recId));
+
           const rawCat = (detail?.contentType || detail?.ContentType || '').toLowerCase();
           let category = 'Films';
           if (rawCat.includes('game')) category = 'Games';
           else if (rawCat.includes('series')) category = 'Series';
           else if (rawCat.includes('book')) category = 'Books';
 
+          // Align with Browse: prefer AvarageRating / AverageRating / averageRating / Rating
+          const avgRaw = detail?.AvarageRating ?? detail?.AverageRating ?? detail?.averageRating ?? detail?.Rating ?? detail?.rating ?? null;
+          const ratingStr = avgRaw != null ? Number(avgRaw).toFixed(1) : (rec?.hybrid_score ? (rec.hybrid_score * 10).toFixed(1) : '0.0');
+
+          // determine rank from recommendation DTO (tolerant to field names)
+          const rankNum = rec?.Rank ?? rec?.rank ?? rec?.RankPosition ?? rec?.rankPosition ?? (rec?.hybrid_score ? Math.round((rec.hybrid_score || 0) * 1000) : 0);
+
           return {
             id: recId,
             title: detail?.title || detail?.Title || rec.Title,
-            rating: (rec.hybrid_score * 10).toFixed(1),
+            rating: ratingStr,
             imageUrl: detail?.posterUrl || detail?.PosterUrl || 
                       `https://placehold.co/280x400/1a1a1a/ffffff?text=${encodeURIComponent(rec.Title)}`,
-            category: category
+            category: category,
+            rank: Number(rankNum) || 0
           };
         });
 
-        enrichedItems.sort((a, b) => parseFloat(b.rating) - parseFloat(a.rating));
+        // Sort by Rank descending (then by displayed rating)
+        enrichedItems.sort((a, b) => {
+          const rA = a.rank ?? 0;
+          const rB = b.rank ?? 0;
+          if (rB !== rA) return rB - rA; // descending by rank
+          return parseFloat(b.rating) - parseFloat(a.rating);
+        });
         this.recommendationsCache[0].items = enrichedItems;
 
         this.recommendationsCache.forEach(section => {
@@ -178,8 +193,45 @@ export class HomeComponent implements OnInit {
     this.router.navigate(['/browse'], { queryParams: { type: type } });
   }
 
+  unexpectedRecommendation() {
+    const uidStr = typeof localStorage !== 'undefined' ? localStorage.getItem('user_id') : null;
+    const uid = uidStr ? Number(uidStr) : null;
+    if (!uid) {
+      alert('User ID not found. Please login as a user to get recommendations.');
+      return;
+    }
+    this.recommendationService.generateRecommendations(uid).subscribe({
+      next: (res: any) => {
+        const recs = res?.recommendations || [];
+        if (!recs.length) {
+          alert('No recommendations available.');
+          return;
+        }
+        const rand = recs[Math.floor(Math.random() * recs.length)];
+        const cid = rand.ContentID || rand.contentID || rand.id;
+        if (cid) {
+          this.router.navigate(['/content', cid]);
+        } else {
+          alert('Cannot determine content id from recommendation.');
+        }
+      },
+      error: (err: any) => {
+        console.error('Recommendation error', err);
+        alert('Failed to fetch recommendations.');
+      }
+    });
+  }
+
   goToContent(id: number) {
     this.router.navigate(['/content', id]);
+  }
+
+  goToHome() {
+    this.router.navigate(['/home']);
+  }
+
+  goToProfile() {
+    this.router.navigate(['/profile']);
   }
 
   onImageError(event: Event) {

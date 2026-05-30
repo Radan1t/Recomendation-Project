@@ -15,12 +15,22 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   
   if (token) {
-    const authReq = req.clone({
-      setHeaders: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-    return next(authReq);
+  const uid = isPlatformBrowser(platformId) ? localStorage.getItem('user_id') : null;
+  const headers: any = { Authorization: `Bearer ${token}` };
+  if (uid) headers['X-User-Id'] = uid;
+  const authReq = req.clone({
+    setHeaders: headers
+  });
+  return next(authReq);
+  }
+
+  // Also forward X-User-Id when present even without token (best-effort)
+  if (isPlatformBrowser(platformId)) {
+  const uid = localStorage.getItem('user_id');
+  if (uid) {
+    const reqWithUid = req.clone({ setHeaders: { 'X-User-Id': uid } });
+    return next(reqWithUid);
+  }
   }
 
   return next(req);

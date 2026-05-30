@@ -54,6 +54,41 @@ public class InteractionsController : ControllerBase
         return Ok(status);
     }
 
+    [HttpGet("content/{contentId}/average")]
+    public async Task<IActionResult> GetContentAverage(int contentId)
+    {
+        try
+        {
+            var avg = await _interactionService.GetContentAverageAsync(contentId);
+            return Ok(avg);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error while calculating content average for {ContentId}", contentId);
+            return StatusCode(500, "Error calculating average");
+        }
+    }
+
+    [HttpGet("user/ratings")]
+    public async Task<IActionResult> GetUserRatings()
+    {
+        var userId = GetUserId();
+        if (userId == 0) return Unauthorized();
+
+        var ratings = await _interactionService.GetUserRatingsAsync(userId);
+        return Ok(ratings);
+    }
+
+    [HttpGet("user/favorites")]
+    public async Task<IActionResult> GetUserFavorites()
+    {
+        var userId = GetUserId();
+        if (userId == 0) return Unauthorized();
+
+        var favorites = await _interactionService.GetUserFavoritesAsync(userId);
+        return Ok(favorites);
+    }
+
     private int GetUserId()
     {
         if (Request.Headers.TryGetValue("X-User-Id", out var userIdStr))

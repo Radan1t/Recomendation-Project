@@ -35,12 +35,12 @@ public class ContentController : ControllerBase
     }
 
     [HttpGet("genres")]
-    public async Task<ActionResult<List<GenreDto>>> GetGenres()
+    public async Task<ActionResult<List<GenreDto>>> GetGenres([FromQuery] string? type = null)
     {
-        _logger.LogInformation("[ContentService] Запит genres");
+        _logger.LogInformation($"[ContentService] Запит genres. type: '{type}'");
         try
         {
-            var result = await _service.GetGenresAsync();
+            var result = await _service.GetGenresAsync(type);
             return Ok(result);
         }
         catch (Exception ex)
@@ -175,23 +175,39 @@ public class ContentController : ControllerBase
                 return StatusCode(500, ex.Message);
             }
         }
-        [HttpGet("search")]
-    public async Task<IActionResult> SearchGlobalContent([FromQuery] string q)
+        [HttpGet("list")]
+        public async Task<IActionResult> GetContentList([FromQuery] string type, [FromQuery] string? q = null, [FromQuery] int? genreId = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
-        _logger.LogInformation($"[ContentService] Запит глобального пошуку. Текст: '{q}'");
-        
-        if (string.IsNullOrWhiteSpace(q)) 
-            return Ok(new List<object>()); 
+            _logger.LogInformation($"[ContentService] Запит list. Type: '{type}', q: '{q}', genreId: '{genreId}', page: {page}, pageSize: {pageSize}");
+            try
+            {
+                var result = await _service.GetContentListAsync(type, q, genreId, page, pageSize);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[ContentService] Помилка отримання списку контенту.");
+                return StatusCode(500, ex.Message);
+            }
+        }
 
-        try
+        [HttpGet("search")]
+        public async Task<IActionResult> SearchGlobalContent([FromQuery] string q)
         {
-            var results = await _service.SearchGlobalContentAsync(q);
-            return Ok(results);
+            _logger.LogInformation($"[ContentService] Запит глобального пошуку. Текст: '{q}'");
+        
+            if (string.IsNullOrWhiteSpace(q)) 
+                return Ok(new List<object>()); 
+
+            try
+            {
+                var results = await _service.SearchGlobalContentAsync(q);
+                return Ok(results);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[ContentService] КРИТИЧНА ПОМИЛКА БАЗИ ДАНИХ у SearchGlobalContent");
+                return StatusCode(500, $"Помилка БД: {ex.Message}");
+            }
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[ContentService] КРИТИЧНА ПОМИЛКА БАЗИ ДАНИХ у SearchGlobalContent");
-            return StatusCode(500, $"Помилка БД: {ex.Message}");
-        }
-    }
 }

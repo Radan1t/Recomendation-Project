@@ -1,7 +1,7 @@
 ﻿import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, AbstractControl, ValidationErrors, ValidatorFn } from '@angular/forms';
-import { ContentService, Genre, Language } from '../../core/services/content.service';
+import { ContentService, Genre } from '../../core/services/content.service';
 import { AuthService } from '../../core/services/auth.service';
 import { Router } from '@angular/router';
 
@@ -42,8 +42,6 @@ export class LandingComponent implements OnInit {
   availableGenres: Genre[] = [];
   selectedGenres: number[] = []; 
 
-  availableLanguages: Language[] = [];
-  selectedLanguages: number[] = []; 
 
   loginForm: FormGroup;
   registerForm: FormGroup;
@@ -86,10 +84,6 @@ export class LandingComponent implements OnInit {
       error: (err) => console.error('Помилка завантаження жанрів:', err)
     });
 
-    this.contentService.getLanguages().subscribe({
-      next: (langs) => this.availableLanguages = langs,
-      error: (err) => console.error('Помилка завантаження мов:', err)
-    });
   }
 
   onImageError(event: Event) {
@@ -115,7 +109,6 @@ export class LandingComponent implements OnInit {
     this.registerForm.reset({ country: '' });
     this.selectedPriorities = [];
     this.selectedGenres = [];
-    this.selectedLanguages = [];
     this.registrationStep = 1;
   }
 
@@ -143,11 +136,6 @@ export class LandingComponent implements OnInit {
     else this.selectedGenres.push(id);
   }
 
-  toggleLanguage(id: number) {
-    const index = this.selectedLanguages.indexOf(id);
-    if (index > -1) this.selectedLanguages.splice(index, 1);
-    else this.selectedLanguages.push(id);
-  }
 
   onLoginSubmit() {
     if (this.loginForm.valid) {
@@ -178,8 +166,7 @@ export class LandingComponent implements OnInit {
       dateOfBirth: formValue.dateOfBirth,
       country: formValue.country,
       contentPriorities: this.selectedPriorities, 
-      favoriteGenreIds: this.selectedGenres,      
-      preferredLanguageIds: this.selectedLanguages
+      favoriteGenreIds: this.selectedGenres,
     };
     
     console.log('Відправляємо дані на бекенд:', payload);

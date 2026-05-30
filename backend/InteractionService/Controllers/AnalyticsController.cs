@@ -23,29 +23,42 @@ namespace InteractionService.Controllers
         [HttpGet("activity")]
         public async Task<IActionResult> GetActivity()
         {
-            var startDate = DateTime.UtcNow.AddDays(-30);
+            try
+            {
+                var startDate = DateTime.UtcNow.AddDays(-30);
 
-            
-            var ratingsRaw = await _context.UserRatings
-                .Where(r => r.DateRated >= startDate)
-                .Select(r => new { r.DateRated })
-                .ToListAsync();
+                var ratingsRaw = await _context.UserRatings
+                    .Where(r => r.DateRated >= startDate)
+                    .Select(r => new { r.DateRated })
+                    .ToListAsync();
 
-            var favoritesRaw = await _context.UserFavorites
-                .Where(f => f.DateAdded >= startDate)
-                .Select(f => new { f.DateAdded })
-                .ToListAsync();
+                var favoritesRaw = await _context.UserFavorites
+                    .Where(f => f.DateAdded >= startDate)
+                    .Select(f => new { f.DateAdded })
+                    .ToListAsync();
 
-            
-            var ratings = ratingsRaw
-                .GroupBy(r => r.DateRated.Date)
-                .Select(g => new { Date = g.Key, Count = g.Count(), Type = "Оцінки" });
+                var ratings = ratingsRaw
+                    .GroupBy(r => r.DateRated.Date)
+                    .Select(g => new { date = g.Key.ToString("o"), count = g.Count(), type = "Оцінки" })
+                    .ToList();
 
-            var favorites = favoritesRaw
-                .GroupBy(f => f.DateAdded.Date)
-                .Select(g => new { Date = g.Key, Count = g.Count(), Type = "Обране" });
+                var favorites = favoritesRaw
+                    .GroupBy(f => f.DateAdded.Date)
+                    .Select(g => new { date = g.Key.ToString("o"), count = g.Count(), type = "Обране" })
+                    .ToList();
 
-            return Ok(ratings.Concat(favorites).OrderBy(x => x.Date));
+                var combined = ratings.Concat(favorites)
+                                      .OrderBy(x => x.date)
+                                      .ToList();
+
+                return Ok(combined);
+            }
+            catch (Exception ex)
+            {
+                // log and return safe response
+                Console.Error.WriteLine(ex);
+                return StatusCode(500, "Error building activity dynamics");
+            }
         }
 
         [HttpGet("genres-distribution")]
